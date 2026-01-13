@@ -41,6 +41,21 @@ export async function handleContextMenuCommand(interaction: MessageContextMenuCo
 
   let embedIndex = 1;
   for (const embed of message.embeds) {
+    const isGifProvider = embed.provider?.name === 'Tenor' || embed.provider?.name === 'GIPHY';
+
+    if (isGifProvider && embed.url) {
+      const validation = MediaService.validateMediaUrl(embed.url);
+      if (validation.valid && validation.type) {
+        mediaItems.push({
+          url: embed.url,
+          type: validation.type,
+          label: `GIF from ${embed.provider?.name}`,
+        });
+        embedIndex++;
+        continue;
+      }
+    }
+
     if (embed.image?.url) {
       const validation = MediaService.validateMediaUrl(embed.image.url);
       if (validation.valid && validation.type) {
