@@ -5,6 +5,7 @@ import {
   ChannelType,
   MessageFlags,
   PermissionFlagsBits,
+  EmbedBuilder,
 } from 'discord.js';
 import { SearchService } from '../services/search.service.js';
 import { TagService } from '../services/tag.service.js';
@@ -109,22 +110,47 @@ export async function handleRecallButton(interaction: ButtonInteraction) {
       'send' in interaction.channel
     ) {
       try {
-        const messageContent = `-# Sent by: <@${userId}> | Tags: ${media.tags.join(', ')}\n${media.mediaUrl}`;
+        const isGifProvider = media.mediaUrl.toLowerCase().includes('tenor.com/view/') ||
+                             media.mediaUrl.toLowerCase().includes('giphy.com/gifs/');
 
-        if (replyTarget) {
-          const targetChannel = await interaction.client.channels.fetch(replyTarget.channelId);
-          if (targetChannel && 'messages' in targetChannel) {
-            const targetMessage = await targetChannel.messages.fetch(replyTarget.messageId);
-            await targetMessage.reply({
-              content: messageContent,
+        if (isGifProvider) {
+          const embed = new EmbedBuilder()
+            .setDescription(`-# Sent by: <@${userId}> | Tags: ${media.tags.join(', ')}`)
+            .setImage(media.mediaUrl);
+
+          if (replyTarget) {
+            const targetChannel = await interaction.client.channels.fetch(replyTarget.channelId);
+            if (targetChannel && 'messages' in targetChannel) {
+              const targetMessage = await targetChannel.messages.fetch(replyTarget.messageId);
+              await targetMessage.reply({
+                embeds: [embed],
+                allowedMentions: { parse: [] },
+              });
+            }
+          } else {
+            await interaction.channel.send({
+              embeds: [embed],
               allowedMentions: { parse: [] },
             });
           }
         } else {
-          await interaction.channel.send({
-            content: messageContent,
-            allowedMentions: { parse: [] },
-          });
+          const messageContent = `-# Sent by: <@${userId}> | Tags: ${media.tags.join(', ')}\n${media.mediaUrl}`;
+
+          if (replyTarget) {
+            const targetChannel = await interaction.client.channels.fetch(replyTarget.channelId);
+            if (targetChannel && 'messages' in targetChannel) {
+              const targetMessage = await targetChannel.messages.fetch(replyTarget.messageId);
+              await targetMessage.reply({
+                content: messageContent,
+                allowedMentions: { parse: [] },
+              });
+            }
+          } else {
+            await interaction.channel.send({
+              content: messageContent,
+              allowedMentions: { parse: [] },
+            });
+          }
         }
 
         await MediaService.incrementRecallCount(media.id);
