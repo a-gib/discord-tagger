@@ -48,7 +48,7 @@ export async function handleContextMenuCommand(interaction: MessageContextMenuCo
         url: embed.url,
         type: 'gif',
         label: `GIF from ${embed.provider?.name}`,
-        thumbnailUrl: embed.thumbnail?.url,
+        ...(embed.thumbnail?.url && { thumbnailUrl: embed.thumbnail.url }),
       });
       embedIndex++;
       continue;
