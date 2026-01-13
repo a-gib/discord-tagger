@@ -151,7 +151,7 @@ export class MediaService {
       tags: media.tags,
       guildId: media.guildId,
       userId: media.userId,
-      fileName: media.fileName ?? undefined,
+      ...(media.fileName !== null && { fileName: media.fileName }),
       recallCount: media.recallCount,
       createdAt: media.createdAt,
       deletedAt: media.deletedAt,

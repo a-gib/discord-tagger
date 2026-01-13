@@ -264,7 +264,6 @@ export async function handleModalSubmit(interaction: ModalSubmitInteraction) {
         tags,
         guildId: interaction.guildId!,
         userId: interaction.user.id,
-        channelId: interaction.channelId!,
       });
 
       // Create confirmation embed
