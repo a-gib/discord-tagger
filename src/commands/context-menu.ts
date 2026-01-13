@@ -43,12 +43,12 @@ export async function handleContextMenuCommand(interaction: MessageContextMenuCo
   for (const embed of message.embeds) {
     const isGifProvider = embed.provider?.name === 'Tenor' || embed.provider?.name === 'GIPHY';
 
-    if (isGifProvider && embed.url) {
-      const validation = MediaService.validateMediaUrl(embed.url);
-      if (validation.valid && validation.type) {
+    if (isGifProvider) {
+      const directUrl = embed.video?.proxyURL || embed.video?.url || embed.image?.url;
+      if (directUrl) {
         mediaItems.push({
-          url: embed.url,
-          type: validation.type,
+          url: directUrl,
+          type: 'gif',
           label: `GIF from ${embed.provider?.name}`,
         });
         embedIndex++;
@@ -261,9 +261,6 @@ export async function handleModalSubmit(interaction: ModalSubmitInteraction) {
         userId: interaction.user.id,
       });
 
-      const isGifProvider = mediaUrl.toLowerCase().includes('tenor.com/view/') ||
-                           mediaUrl.toLowerCase().includes('giphy.com/gifs/');
-
       const embed = new EmbedBuilder()
         .setColor(Colors.Green)
         .setTitle('✅ Saved Successfully')
@@ -272,13 +269,8 @@ export async function handleModalSubmit(interaction: ModalSubmitInteraction) {
           { name: 'Tags', value: tags.join(', '), inline: false }
         )
         .setFooter({ text: `ID: ${media.id}` })
-        .setTimestamp();
-
-      if (isGifProvider) {
-        embed.setURL(mediaUrl).setDescription(`[Click to view GIF](${mediaUrl})`);
-      } else {
-        embed.setImage(mediaUrl);
-      }
+        .setTimestamp()
+        .setImage(mediaUrl);
 
       await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
     }

@@ -33,9 +33,6 @@ export async function handleStoreCommand(interaction: ChatInputCommandInteractio
       userId: interaction.user.id,
     });
 
-    const isGifProvider = url.toLowerCase().includes('tenor.com/view/') ||
-                         url.toLowerCase().includes('giphy.com/gifs/');
-
     const embed = new EmbedBuilder()
       .setColor(Colors.Green)
       .setTitle('✅ Saved Successfully')
@@ -44,13 +41,8 @@ export async function handleStoreCommand(interaction: ChatInputCommandInteractio
         { name: 'Tags', value: tags.join(', '), inline: false }
       )
       .setFooter({ text: `ID: ${media.id}` })
-      .setTimestamp();
-
-    if (isGifProvider) {
-      embed.setURL(url).setDescription(`[Click to view GIF](${url})`);
-    } else {
-      embed.setImage(url);
-    }
+      .setTimestamp()
+      .setImage(url);
 
     await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
   } catch (error) {

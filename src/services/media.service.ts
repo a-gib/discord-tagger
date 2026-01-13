@@ -30,10 +30,6 @@ export class MediaService {
     const gifExt = '.gif';
     const videoExts = ['.mp4', '.mov', '.webm'];
 
-    if (lowerUrl.includes('tenor.com/view/') || lowerUrl.includes('giphy.com/gifs/')) {
-      return { valid: true, type: 'gif' };
-    }
-
     if (imageExts.some((ext) => lowerUrl.includes(ext))) {
       return { valid: true, type: 'image' };
     }

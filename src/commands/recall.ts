@@ -109,7 +109,7 @@ export async function handleRecallButton(interaction: ButtonInteraction) {
       'send' in interaction.channel
     ) {
       try {
-        const messageContent = `-# Sent by: <@${userId}> | Tags: ${media.tags.join(', ')} | [↗](${media.mediaUrl})`;
+        const messageContent = `-# Sent by: <@${userId}> | Tags: ${media.tags.join(', ')} | [↗](${media.mediaUrl})\n${media.mediaUrl}`;
 
         if (replyTarget) {
           const targetChannel = await interaction.client.channels.fetch(replyTarget.channelId);
