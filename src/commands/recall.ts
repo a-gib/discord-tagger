@@ -109,51 +109,22 @@ export async function handleRecallButton(interaction: ButtonInteraction) {
       'send' in interaction.channel
     ) {
       try {
-        const isGifProvider = media.mediaUrl.toLowerCase().includes('tenor.com/view/') ||
-                             media.mediaUrl.toLowerCase().includes('giphy.com/gifs/');
+        const messageContent = `-# Sent by: <@${userId}> | Tags: ${media.tags.join(', ')} | [↗](${media.mediaUrl})`;
 
-        if (isGifProvider) {
-          if (replyTarget) {
-            const targetChannel = await interaction.client.channels.fetch(replyTarget.channelId);
-            if (targetChannel && 'messages' in targetChannel) {
-              const targetMessage = await targetChannel.messages.fetch(replyTarget.messageId);
-              const sentMessage = await targetMessage.reply({
-                content: media.mediaUrl,
-                allowedMentions: { parse: [] },
-              });
-              await sentMessage.reply({
-                content: `-# Sent by: <@${userId}> | Tags: ${media.tags.join(', ')}`,
-                allowedMentions: { parse: [] },
-              });
-            }
-          } else {
-            const sentMessage = await interaction.channel.send({
-              content: media.mediaUrl,
-              allowedMentions: { parse: [] },
-            });
-            await sentMessage.reply({
-              content: `-# Sent by: <@${userId}> | Tags: ${media.tags.join(', ')}`,
-              allowedMentions: { parse: [] },
-            });
-          }
-        } else {
-          const messageContent = `-# Sent by: <@${userId}> | Tags: ${media.tags.join(', ')}\n${media.mediaUrl}`;
-
-          if (replyTarget) {
-            const targetChannel = await interaction.client.channels.fetch(replyTarget.channelId);
-            if (targetChannel && 'messages' in targetChannel) {
-              const targetMessage = await targetChannel.messages.fetch(replyTarget.messageId);
-              await targetMessage.reply({
-                content: messageContent,
-                allowedMentions: { parse: [] },
-              });
-            }
-          } else {
-            await interaction.channel.send({
+        if (replyTarget) {
+          const targetChannel = await interaction.client.channels.fetch(replyTarget.channelId);
+          if (targetChannel && 'messages' in targetChannel) {
+            const targetMessage = await targetChannel.messages.fetch(replyTarget.messageId);
+            await targetMessage.reply({
               content: messageContent,
               allowedMentions: { parse: [] },
             });
           }
+        } else {
+          await interaction.channel.send({
+            content: messageContent,
+            allowedMentions: { parse: [] },
+          });
         }
 
         await MediaService.incrementRecallCount(media.id);
