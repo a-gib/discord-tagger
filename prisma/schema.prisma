@@ -19,20 +19,16 @@ model Media {
   // Discord context
   guildId   String // Server where it was stored
   userId    String // User who stored it
-  channelId String // Channel where stored
-  messageId String? // Original message (if from context menu)
 
   // Metadata
   fileName    String?
-  fileSize    Int? // bytes
-  width       Int?
-  height      Int?
-  recallCount Int    @default(0) // Track how many times this was recalled/sent
+  recallCount Int      @default(0) // Track how many times this was recalled/sent
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  deletedAt DateTime? // Soft delete timestamp
 
   @@index([guildId])
   @@index([userId])
   @@index([recallCount])
+  @@index([deletedAt])
 }

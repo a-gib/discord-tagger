@@ -18,10 +18,11 @@ export class SearchService {
     searchTags: string[],
     typeFilter?: string
   ): Promise<MediaRecord[]> {
-    // Get all media in this guild, optionally filtered by type
+    // Get all non-deleted media in this guild, optionally filtered by type
     const allMedia = await prisma.media.findMany({
       where: {
         guildId,
+        deletedAt: null,
         ...(typeFilter ? { mediaType: typeFilter } : {}),
       },
       orderBy: { createdAt: 'desc' },
@@ -29,7 +30,7 @@ export class SearchService {
 
     // Score each media entry by tag overlap
     const scored: ScoredMedia[] = allMedia
-      .map((media: any): ScoredMedia => {
+      .map((media): ScoredMedia => {
         const mediaTags = media.tags;
         const matchedTags = searchTags.filter((tag) => mediaTags.includes(tag));
 
@@ -40,18 +41,11 @@ export class SearchService {
           tags: mediaTags,
           guildId: media.guildId,
           userId: media.userId,
-          channelId: media.channelId,
+          fileName: media.fileName ?? undefined,
           recallCount: media.recallCount,
           createdAt: media.createdAt,
-          updatedAt: media.updatedAt,
+          deletedAt: media.deletedAt,
         };
-
-        // Only include optional properties if they exist
-        if (media.messageId !== null) mediaRecord.messageId = media.messageId;
-        if (media.fileName !== null) mediaRecord.fileName = media.fileName;
-        if (media.fileSize !== null) mediaRecord.fileSize = media.fileSize;
-        if (media.width !== null) mediaRecord.width = media.width;
-        if (media.height !== null) mediaRecord.height = media.height;
 
         return {
           media: mediaRecord,
@@ -60,7 +54,7 @@ export class SearchService {
         };
       })
       // Only keep media with at least one matching tag
-      .filter((item: any): item is ScoredMedia => item.score > 0);
+      .filter((item): item is ScoredMedia => item.score > 0);
 
     // Sort by: 1) score (most matching tags), 2) recall count (most popular), 3) creation date (newest)
     scored.sort((a, b) => {
@@ -84,10 +78,11 @@ export class SearchService {
    * @param typeFilter - Optional media type to filter by ('image', 'gif', 'video')
    */
   static async getTopMedia(guildId: string, typeFilter?: string): Promise<MediaRecord[]> {
-    // Get all media in this guild, optionally filtered by type
+    // Get all non-deleted media in this guild, optionally filtered by type
     const allMedia = await prisma.media.findMany({
       where: {
         guildId,
+        deletedAt: null,
         ...(typeFilter ? { mediaType: typeFilter } : {}),
       },
       orderBy: [
@@ -97,28 +92,17 @@ export class SearchService {
     });
 
     // Convert to MediaRecord format
-    return allMedia.map((media: any) => {
-      const mediaRecord: MediaRecord = {
-        id: media.id,
-        mediaUrl: media.mediaUrl,
-        mediaType: media.mediaType,
-        tags: media.tags,
-        guildId: media.guildId,
-        userId: media.userId,
-        channelId: media.channelId,
-        recallCount: media.recallCount,
-        createdAt: media.createdAt,
-        updatedAt: media.updatedAt,
-      };
-
-      // Only include optional properties if they exist
-      if (media.messageId !== null) mediaRecord.messageId = media.messageId;
-      if (media.fileName !== null) mediaRecord.fileName = media.fileName;
-      if (media.fileSize !== null) mediaRecord.fileSize = media.fileSize;
-      if (media.width !== null) mediaRecord.width = media.width;
-      if (media.height !== null) mediaRecord.height = media.height;
-
-      return mediaRecord;
-    });
+    return allMedia.map((media) => ({
+      id: media.id,
+      mediaUrl: media.mediaUrl,
+      mediaType: media.mediaType,
+      tags: media.tags,
+      guildId: media.guildId,
+      userId: media.userId,
+      fileName: media.fileName ?? undefined,
+      recallCount: media.recallCount,
+      createdAt: media.createdAt,
+      deletedAt: media.deletedAt,
+    }));
   }
 }

@@ -6,20 +6,20 @@ export interface MediaData {
   tags: string[];
   guildId: string;
   userId: string;
-  channelId: string;
-  messageId?: string;
   fileName?: string;
-  fileSize?: number;
-  width?: number;
-  height?: number;
 }
 
-export interface MediaRecord extends Omit<MediaData, 'tags'> {
+export interface MediaRecord {
   id: string;
-  tags: string[]; // Parsed from JSON
-  recallCount: number; // How many times this was recalled
+  mediaUrl: string;
+  mediaType: string;
+  tags: string[];
+  guildId: string;
+  userId: string;
+  fileName?: string;
+  recallCount: number;
   createdAt: Date;
-  updatedAt: Date;
+  deletedAt: Date | null;
 }
 
 export class MediaService {
@@ -61,12 +61,7 @@ export class MediaService {
         tags: data.tags,
         guildId: data.guildId,
         userId: data.userId,
-        channelId: data.channelId,
-        ...(data.messageId !== undefined && { messageId: data.messageId }),
         ...(data.fileName !== undefined && { fileName: data.fileName }),
-        ...(data.fileSize !== undefined && { fileSize: data.fileSize }),
-        ...(data.width !== undefined && { width: data.width }),
-        ...(data.height !== undefined && { height: data.height }),
       },
     });
 
@@ -74,11 +69,14 @@ export class MediaService {
   }
 
   /**
-   * Get a single media entry by ID
+   * Get a single media entry by ID (excludes soft-deleted)
    */
   static async getMediaById(id: string): Promise<MediaRecord | null> {
-    const media = await prisma.media.findUnique({
-      where: { id },
+    const media = await prisma.media.findFirst({
+      where: {
+        id,
+        deletedAt: null,
+      },
     });
 
     if (!media) {
@@ -89,12 +87,15 @@ export class MediaService {
   }
 
   /**
-   * Delete a media entry with permission check
+   * Soft delete a media entry with permission check
    * Returns true if deleted, false if not found or no permission
    */
   static async deleteMedia(id: string, userId: string, isAdmin: boolean): Promise<boolean> {
-    const media = await prisma.media.findUnique({
-      where: { id },
+    const media = await prisma.media.findFirst({
+      where: {
+        id,
+        deletedAt: null,
+      },
     });
 
     if (!media) {
@@ -106,8 +107,9 @@ export class MediaService {
       return false;
     }
 
-    await prisma.media.delete({
+    await prisma.media.update({
       where: { id },
+      data: { deletedAt: new Date() },
     });
 
     return true;
@@ -137,36 +139,22 @@ export class MediaService {
     tags: string[];
     guildId: string;
     userId: string;
-    channelId: string;
-    messageId: string | null;
     fileName: string | null;
-    fileSize: number | null;
-    width: number | null;
-    height: number | null;
     recallCount: number;
     createdAt: Date;
-    updatedAt: Date;
+    deletedAt: Date | null;
   }): MediaRecord {
-    const result: MediaRecord = {
+    return {
       id: media.id,
       mediaUrl: media.mediaUrl,
       mediaType: media.mediaType,
       tags: media.tags,
       guildId: media.guildId,
       userId: media.userId,
-      channelId: media.channelId,
+      fileName: media.fileName ?? undefined,
       recallCount: media.recallCount,
       createdAt: media.createdAt,
-      updatedAt: media.updatedAt,
+      deletedAt: media.deletedAt,
     };
-
-    // Only include optional properties if they exist
-    if (media.messageId !== null) result.messageId = media.messageId;
-    if (media.fileName !== null) result.fileName = media.fileName;
-    if (media.fileSize !== null) result.fileSize = media.fileSize;
-    if (media.width !== null) result.width = media.width;
-    if (media.height !== null) result.height = media.height;
-
-    return result;
   }
 }
