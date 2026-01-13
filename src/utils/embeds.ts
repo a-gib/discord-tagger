@@ -19,6 +19,9 @@ export function createMediaEmbed(
         ? '🎥'
         : '🖼️';
 
+  const isGifProvider = media.mediaUrl.toLowerCase().includes('tenor.com/view/') ||
+                        media.mediaUrl.toLowerCase().includes('giphy.com/gifs/');
+
   const embed = new EmbedBuilder()
     .setColor(Colors.Blue)
     .setTitle(`${emoji} ${media.mediaType.charAt(0).toUpperCase() + media.mediaType.slice(1)}`)
@@ -30,11 +33,20 @@ export function createMediaEmbed(
       { name: 'Result', value: `${position} of ${total}`, inline: true }
     )
     .setFooter({ text: `ID: ${media.id}` })
-    .setTimestamp(media.createdAt)
-    .setImage(media.mediaUrl);
+    .setTimestamp(media.createdAt);
 
-  if (media.fileName) {
-    embed.setDescription(`📁 ${media.fileName}`);
+  if (isGifProvider) {
+    embed.setURL(media.mediaUrl);
+    if (media.fileName) {
+      embed.setDescription(`📁 ${media.fileName}\n\n[Click to view GIF](${media.mediaUrl})`);
+    } else {
+      embed.setDescription(`[Click to view GIF](${media.mediaUrl})`);
+    }
+  } else {
+    embed.setImage(media.mediaUrl);
+    if (media.fileName) {
+      embed.setDescription(`📁 ${media.fileName}`);
+    }
   }
 
   return embed;

@@ -261,6 +261,9 @@ export async function handleModalSubmit(interaction: ModalSubmitInteraction) {
         userId: interaction.user.id,
       });
 
+      const isGifProvider = mediaUrl.toLowerCase().includes('tenor.com/view/') ||
+                           mediaUrl.toLowerCase().includes('giphy.com/gifs/');
+
       const embed = new EmbedBuilder()
         .setColor(Colors.Green)
         .setTitle('✅ Saved Successfully')
@@ -269,8 +272,13 @@ export async function handleModalSubmit(interaction: ModalSubmitInteraction) {
           { name: 'Tags', value: tags.join(', '), inline: false }
         )
         .setFooter({ text: `ID: ${media.id}` })
-        .setTimestamp()
-        .setImage(mediaUrl);
+        .setTimestamp();
+
+      if (isGifProvider) {
+        embed.setURL(mediaUrl).setDescription(`[Click to view GIF](${mediaUrl})`);
+      } else {
+        embed.setImage(mediaUrl);
+      }
 
       await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
     }
