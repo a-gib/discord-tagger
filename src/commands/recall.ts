@@ -222,11 +222,9 @@ export async function handleDeleteTaggerMessage(interaction: MessageContextMenuC
   }
 
   try {
+    await interaction.deferReply({ ephemeral: true });
     await message.delete();
-    await interaction.reply({
-      content: '✅ Message deleted.',
-      flags: MessageFlags.Ephemeral,
-    });
+    await interaction.deleteReply();
   } catch (error) {
     console.error('Error deleting Tagger message:', error);
     await interaction.reply({
