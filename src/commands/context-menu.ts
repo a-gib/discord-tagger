@@ -228,6 +228,7 @@ export async function handleModalSubmit(interaction: ModalSubmitInteraction) {
         .setTimestamp();
 
       await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
+      mediaSelectionCache.delete(cacheKey);
     } else {
       const mediaIndex = parseInt(selectionValue);
 
@@ -273,8 +274,6 @@ export async function handleModalSubmit(interaction: ModalSubmitInteraction) {
 
       await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
     }
-
-    mediaSelectionCache.delete(cacheKey);
   } catch (error) {
     console.error('Error saving media from context menu:', error);
     await interaction.reply({
