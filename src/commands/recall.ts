@@ -18,7 +18,7 @@ export const replyTargets = new Map<string, { channelId: string; messageId: stri
 
 function getExtension(url: string): string {
   const match = url.match(/\.(png|jpg|jpeg|gif|webp|mp4|mov|webm)/i);
-  return match ? match[1] : 'bin';
+  return match?.[1] || 'bin';
 }
 
 export async function handleRecallCommand(interaction: ChatInputCommandInteraction) {
