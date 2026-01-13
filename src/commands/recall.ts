@@ -5,7 +5,6 @@ import {
   ChannelType,
   MessageFlags,
   PermissionFlagsBits,
-  EmbedBuilder,
 } from 'discord.js';
 import { SearchService } from '../services/search.service.js';
 import { TagService } from '../services/tag.service.js';
