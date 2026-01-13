@@ -102,19 +102,18 @@ export function createHelpEmbed(): EmbedBuilder {
   return new EmbedBuilder()
     .setColor(Colors.Gold)
     .setTitle('📚 Help')
-    .setDescription('Save and get media using custom tags!')
+    .setDescription('Save and search using custom tags!')
     .addFields(
       {
         name: '💡 Quick Save',
         value:
-          '**Right-click any message with media → Apps → "Save to Tagger"**\n' +
-          'The easiest way to save! No need to copy URLs.',
+          '**Right-click a message → Apps → "Save to Tagger"**',
         inline: false,
       },
       {
         name: '/save',
         value:
-          '**Save media with tags**\n' +
+          '**Save with tags**\n' +
           'Usage: `/save url:<url> tags:<tags>`\n' +
           'Example: `/save url:https://... tags:plumber guh`',
         inline: false,
@@ -122,7 +121,7 @@ export function createHelpEmbed(): EmbedBuilder {
       {
         name: '/get',
         value:
-          '**Get media by searching tags**\n' +
+          '**Search by tags**\n' +
           'Usage: `/get tags:<tags>`\n' +
           'Example: `/get tags:plumber guh`\n' +
           'Browse results with Previous/Next, click Send to post.',
@@ -131,19 +130,19 @@ export function createHelpEmbed(): EmbedBuilder {
       {
         name: '/delete',
         value:
-          '**Delete stored media**\n' +
+          '**Delete by tags**\n' +
           'Usage: `/delete tags:<tags>`\n' +
           'Example: `/delete tags:plumber guh`\n' +
-          'Browse results and click Delete to remove. Only works for your own media (or if you\'re an admin).',
+          'Browse and delete. Only works for your own items (or if you\'re an admin).',
         inline: false,
       },
       {
         name: '/top',
         value:
-          '**Show most used media**\n' +
+          '**Show most used**\n' +
           'Usage: `/top` or `/top type:<type>`\n' +
           'Example: `/top type:gif`\n' +
-          'Browse the most popular media in this server. Public message everyone can see!',
+          'Browse the most popular in this server. Public message everyone can see!',
         inline: false,
       },
       {
@@ -159,7 +158,7 @@ export function createHelpEmbed(): EmbedBuilder {
         value:
           '• Lowercase, alphanumeric + underscore only\n' +
           '• Max 50 characters per tag\n' +
-          '• Max 20 tags per media\n' +
+          '• Max 20 tags per item\n' +
           '• Spaces and commas separate tags',
         inline: false,
       }

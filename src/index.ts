@@ -110,7 +110,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
     console.error('Error handling interaction:', error);
 
     // Try to respond with error message
-    const errorMessage = '❌ An error occurred while processing your request.';
+    const errorMessage = '❗ An error occurred while processing your request.';
     if (interaction.isRepliable()) {
       if (interaction.replied || interaction.deferred) {
         await interaction.followUp({ content: errorMessage, flags: MessageFlags.Ephemeral });

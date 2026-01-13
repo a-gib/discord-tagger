@@ -37,7 +37,7 @@ export async function handleDeleteCommand(interaction: ChatInputCommandInteracti
     if (results.length === 0) {
       const filterMsg = typeFilter ? ` (type: ${typeFilter})` : '';
       await interaction.reply({
-        content: `❌ No media found matching tags: ${searchTags.join(', ')}${filterMsg}`,
+        content: `❌ No results found for tags: ${searchTags.join(', ')}${filterMsg}`,
         flags: MessageFlags.Ephemeral,
       });
       return;
@@ -59,7 +59,7 @@ export async function handleDeleteCommand(interaction: ChatInputCommandInteracti
   } catch (error) {
     console.error('Error in delete command:', error);
     await interaction.reply({
-      content: '❌ An error occurred while searching for media.',
+      content: '❗ Search failed.',
       flags: MessageFlags.Ephemeral,
     });
   }
@@ -74,7 +74,7 @@ export async function handleDeleteButton(interaction: ButtonInteraction) {
 
   if (!results) {
     await interaction.reply({
-      content: '❌ Session expired. Please run /delete again.',
+      content: '❗ Session expired. Please run /delete again.',
       flags: MessageFlags.Ephemeral,
     });
     return;
@@ -87,7 +87,7 @@ export async function handleDeleteButton(interaction: ButtonInteraction) {
   const currentIndex = results.findIndex((m) => m.id === mediaId);
   if (currentIndex === -1) {
     await interaction.reply({
-      content: '❌ Media not found in current session.',
+      content: '❗ Not found in current session.',
       flags: MessageFlags.Ephemeral,
     });
     return;
@@ -104,7 +104,7 @@ export async function handleDeleteButton(interaction: ButtonInteraction) {
 
     if (!deleted) {
       await interaction.update({
-        content: '❌ Failed to delete. You can only delete your own media (or if you\'re an admin).',
+        content: '❌ You can only delete your own items (unless you\'re a server admin).',
         embeds: [],
         components: [],
       });
@@ -116,7 +116,7 @@ export async function handleDeleteButton(interaction: ButtonInteraction) {
 
     if (results.length === 0) {
       await interaction.update({
-        content: '✅ Media deleted! No more results.',
+        content: '✅ Deleted! No more results.',
         embeds: [],
         components: [],
       });
@@ -133,7 +133,7 @@ export async function handleDeleteButton(interaction: ButtonInteraction) {
     const buttons = createNavigationButtons(position, results.length, 'delete', nextMedia.id);
 
     await interaction.update({
-      content: `✅ Media deleted! ${results.length} result(s) remaining.`,
+      content: `✅ Deleted! ${results.length} result(s) remaining.`,
       embeds: [embed],
       components: [buttons],
     });

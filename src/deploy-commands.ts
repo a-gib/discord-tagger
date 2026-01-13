@@ -20,7 +20,7 @@ const clientId: string = DISCORD_CLIENT_ID;
 const commands = [
   new SlashCommandBuilder()
     .setName('save')
-    .setDescription('Save a media URL with tags')
+    .setDescription('Save with URL and tags')
     .addStringOption((option) =>
       option
         .setName('url')
@@ -36,7 +36,7 @@ const commands = [
 
   new SlashCommandBuilder()
     .setName('get')
-    .setDescription('Get media by searching tags')
+    .setDescription('Search by tags')
     .addStringOption((option) =>
       option
         .setName('tags')
@@ -46,7 +46,7 @@ const commands = [
     .addStringOption((option) =>
       option
         .setName('type')
-        .setDescription('Filter by media type')
+        .setDescription('Filter by type')
         .setRequired(false)
         .addChoices(
           { name: 'Image', value: 'image' },
@@ -57,7 +57,7 @@ const commands = [
 
   new SlashCommandBuilder()
     .setName('delete')
-    .setDescription('Delete stored media by searching with tags')
+    .setDescription('Delete by searching tags')
     .addStringOption((option) =>
       option
         .setName('tags')
@@ -67,7 +67,7 @@ const commands = [
     .addStringOption((option) =>
       option
         .setName('type')
-        .setDescription('Filter by media type')
+        .setDescription('Filter by type')
         .setRequired(false)
         .addChoices(
           { name: 'Image', value: 'image' },
@@ -78,11 +78,11 @@ const commands = [
 
   new SlashCommandBuilder()
     .setName('top')
-    .setDescription('Show the most used media in this server')
+    .setDescription('Show most used in this server')
     .addStringOption((option) =>
       option
         .setName('type')
-        .setDescription('Filter by media type')
+        .setDescription('Filter by type')
         .setRequired(false)
         .addChoices(
           { name: 'Image', value: 'image' },
@@ -93,7 +93,7 @@ const commands = [
 
   new SlashCommandBuilder()
     .setName('help')
-    .setDescription('Show help information about Tagger bot'),
+    .setDescription('Explain how to use Tagger'),
 
   // Context menu commands
   new ContextMenuCommandBuilder()

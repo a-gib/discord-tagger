@@ -80,7 +80,7 @@ export async function handleContextMenuCommand(interaction: MessageContextMenuCo
   // If no media found, show error
   if (mediaItems.length === 0) {
     await interaction.reply({
-      content: '❌ No media found in this message. Please try a message with an image, GIF, or video.',
+      content: '❌ Nothing found. Please try a message with an image, GIF, or video.',
       flags: MessageFlags.Ephemeral,
     });
     return;
@@ -143,7 +143,7 @@ export async function handleContextMenuCommand(interaction: MessageContextMenuCo
   }, 15 * 60 * 1000);
 
   await interaction.reply({
-    content: `📎 This message has ${mediaItems.length} media items. Choose which one to save:`,
+    content: `📎 This message has ${mediaItems.length} items. Choose which one to save:`,
     components: [row],
     flags: MessageFlags.Ephemeral,
   });
@@ -200,7 +200,7 @@ export async function handleModalSubmit(interaction: ModalSubmitInteraction) {
 
     if (!mediaItems) {
       await interaction.reply({
-        content: '❌ Session expired. Please try saving the media again.',
+        content: '❗ Session expired. Please try again.',
         flags: MessageFlags.Ephemeral,
       });
       return;
@@ -225,7 +225,7 @@ export async function handleModalSubmit(interaction: ModalSubmitInteraction) {
       // Create confirmation embed
       const embed = new EmbedBuilder()
         .setColor(Colors.Green)
-        .setTitle(`✅ Saved ${savedMedia.length} Media Items`)
+        .setTitle(`✅ Saved ${savedMedia.length} Items`)
         .addFields(
           { name: 'Items', value: savedMedia.length.toString(), inline: true },
           { name: 'Tags', value: tags.join(', '), inline: false }
@@ -239,7 +239,7 @@ export async function handleModalSubmit(interaction: ModalSubmitInteraction) {
 
       if (mediaIndex >= mediaItems.length) {
         await interaction.reply({
-          content: '❌ Media not found.',
+          content: '❌ Nothing found.',
           flags: MessageFlags.Ephemeral,
         });
         return;
@@ -248,7 +248,7 @@ export async function handleModalSubmit(interaction: ModalSubmitInteraction) {
       const selectedMedia = mediaItems[mediaIndex];
       if (!selectedMedia) {
         await interaction.reply({
-          content: '❌ Media not found.',
+          content: '❌ Nothing found.',
           flags: MessageFlags.Ephemeral,
         });
         return;
@@ -269,7 +269,7 @@ export async function handleModalSubmit(interaction: ModalSubmitInteraction) {
       // Create confirmation embed
       const embed = new EmbedBuilder()
         .setColor(Colors.Green)
-        .setTitle('✅ Media Saved Successfully')
+        .setTitle('✅ Saved Successfully')
         .addFields(
           { name: 'Type', value: mediaType, inline: true },
           { name: 'Tags', value: tags.join(', '), inline: false }
@@ -286,7 +286,7 @@ export async function handleModalSubmit(interaction: ModalSubmitInteraction) {
   } catch (error) {
     console.error('Error saving media from context menu:', error);
     await interaction.reply({
-      content: '❌ Failed to save media. Please try again later.',
+      content: '❗ Failed to save. Please try again.',
       flags: MessageFlags.Ephemeral,
     });
   }
@@ -345,7 +345,7 @@ export async function handleReplyModalSubmit(interaction: ModalSubmitInteraction
 
     if (results.length === 0) {
       await interaction.reply({
-        content: `❌ No media found matching tags: ${tags.join(', ')}`,
+        content: `❌ No results found for tags: ${tags.join(', ')}`,
         flags: MessageFlags.Ephemeral,
       });
       return;
@@ -373,7 +373,7 @@ export async function handleReplyModalSubmit(interaction: ModalSubmitInteraction
   } catch (error) {
     console.error('Error in reply with tagger:', error);
     await interaction.reply({
-      content: '❌ An error occurred while searching for media.',
+      content: '❗ Search failed.',
       flags: MessageFlags.Ephemeral,
     });
   }

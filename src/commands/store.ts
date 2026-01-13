@@ -11,7 +11,7 @@ export async function handleStoreCommand(interaction: ChatInputCommandInteractio
   const validation = MediaService.validateMediaUrl(url);
   if (!validation.valid || !validation.type) {
     await interaction.reply({
-      content: '❌ Invalid media URL. Please provide a valid image, GIF, or video URL.',
+      content: '❌ Invalid URL. Must be an image, GIF, or video.',
       flags: MessageFlags.Ephemeral,
     });
     return;
@@ -40,7 +40,7 @@ export async function handleStoreCommand(interaction: ChatInputCommandInteractio
     // Create confirmation embed
     const embed = new EmbedBuilder()
       .setColor(Colors.Green)
-      .setTitle('✅ Media Saved Successfully')
+      .setTitle('✅ Saved Successfully')
       .addFields(
         { name: 'Type', value: validation.type, inline: true },
         { name: 'Tags', value: tags.join(', '), inline: false }
@@ -53,7 +53,7 @@ export async function handleStoreCommand(interaction: ChatInputCommandInteractio
   } catch (error) {
     console.error('Error saving media:', error);
     await interaction.reply({
-      content: '❌ Failed to save media. Please try again later.',
+      content: '❗ Failed to save. Please try again.',
       flags: MessageFlags.Ephemeral,
     });
   }

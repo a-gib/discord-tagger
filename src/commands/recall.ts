@@ -56,7 +56,7 @@ export async function handleRecallCommand(interaction: ChatInputCommandInteracti
     if (results.length === 0) {
       const filterMsg = typeFilter ? ` (type: ${typeFilter})` : '';
       await interaction.reply({
-        content: `❌ No media found matching tags: ${searchTags.join(', ')}${filterMsg}`,
+        content: `❌ No results found for tags: ${searchTags.join(', ')}${filterMsg}`,
         flags: MessageFlags.Ephemeral,
       });
       return;
@@ -78,7 +78,7 @@ export async function handleRecallCommand(interaction: ChatInputCommandInteracti
   } catch (error) {
     console.error('Error in recall command:', error);
     await interaction.reply({
-      content: '❌ An error occurred while searching for media.',
+      content: '❗ Search failed.',
       flags: MessageFlags.Ephemeral,
     });
   }
@@ -93,7 +93,7 @@ export async function handleRecallButton(interaction: ButtonInteraction) {
 
   if (!results) {
     await interaction.reply({
-      content: '❌ Session expired. Please run /get again.',
+      content: '❗ Session expired. Please run /get again.',
       flags: MessageFlags.Ephemeral,
     });
     return;
@@ -106,7 +106,7 @@ export async function handleRecallButton(interaction: ButtonInteraction) {
   const currentIndex = results.findIndex((m) => m.id === mediaId);
   if (currentIndex === -1) {
     await interaction.reply({
-      content: '❌ Media not found in current session.',
+      content: '❗ Something went wrong.',
       flags: MessageFlags.Ephemeral,
     });
     return;
@@ -176,7 +176,7 @@ export async function handleRecallButton(interaction: ButtonInteraction) {
           });
         } else {
           await interaction.update({
-            content: '❌ Failed to send media. Please try again.',
+            content: '❗ Failed to send. Please try again.',
             embeds: [],
             components: [],
           });
@@ -234,7 +234,7 @@ export async function handleDeleteTaggerMessage(interaction: MessageContextMenuC
   const senderMatch = message.content.match(/-# Sent by: <@(\d+)>/);
   if (!senderMatch) {
     await interaction.reply({
-      content: '❌ Could not identify the original sender of this message.',
+      content: '❗ Could not identify the sender.',
       flags: MessageFlags.Ephemeral,
     });
     return;
@@ -249,7 +249,7 @@ export async function handleDeleteTaggerMessage(interaction: MessageContextMenuC
 
   if (!hasPermission) {
     await interaction.reply({
-      content: '❌ Only the original sender or moderators can delete this message.',
+      content: '❌ Only the sender or moderators can delete this.',
       flags: MessageFlags.Ephemeral,
     });
     return;
@@ -265,7 +265,7 @@ export async function handleDeleteTaggerMessage(interaction: MessageContextMenuC
   } catch (error) {
     console.error('Error deleting Tagger message:', error);
     await interaction.reply({
-      content: '❌ Failed to delete message. Make sure I have permission to manage messages.',
+      content: '❌ Failed to delete. Make sure I have permission to manage messages.',
       flags: MessageFlags.Ephemeral,
     });
   }

@@ -23,7 +23,7 @@ export async function handleTopCommand(interaction: ChatInputCommandInteraction)
     if (results.length === 0) {
       const filterMsg = typeFilter ? ` (type: ${typeFilter})` : '';
       await interaction.reply({
-        content: `❌ No media found${filterMsg}`,
+        content: `❌ No results found${filterMsg}`,
       });
       return;
     }
@@ -34,7 +34,7 @@ export async function handleTopCommand(interaction: ChatInputCommandInteraction)
 
     const filterMsg = typeFilter ? ` (${typeFilter})` : '';
     const response = await interaction.reply({
-      content: `🏆 Top ${results.length} most used media${filterMsg}`,
+      content: `🏆 Top ${results.length} most used${filterMsg}`,
       embeds: [embed],
       components: [buttons],
       fetchReply: true,
@@ -50,7 +50,7 @@ export async function handleTopCommand(interaction: ChatInputCommandInteraction)
   } catch (error) {
     console.error('Error in top command:', error);
     await interaction.reply({
-      content: '❌ An error occurred while fetching top media.',
+      content: '❗ Failed to fetch results.',
     });
   }
 }
@@ -64,7 +64,7 @@ export async function handleTopButton(interaction: ButtonInteraction) {
 
   if (!results) {
     await interaction.reply({
-      content: '❌ Session expired. Please run /top again.',
+      content: '❗ Session expired. Please run /top again.',
       flags: MessageFlags.Ephemeral,
     });
     return;
@@ -77,7 +77,7 @@ export async function handleTopButton(interaction: ButtonInteraction) {
   const currentIndex = results.findIndex((m) => m.id === mediaId);
   if (currentIndex === -1) {
     await interaction.reply({
-      content: '❌ Media not found in current session.',
+      content: '❗ Something went wrong.',
       flags: MessageFlags.Ephemeral,
     });
     return;
