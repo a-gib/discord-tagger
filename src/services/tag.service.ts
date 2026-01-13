@@ -1,3 +1,11 @@
+/**
+ * tag.service.ts
+ * Stash
+ *
+ * Created on 01/13/2026
+ * Copyright (c) 2026 a-gib. Licensed under the MIT License.
+ */
+
 export class TagService {
   static normalizeTags(input: string): string[] {
     const tags = input

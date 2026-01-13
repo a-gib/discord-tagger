@@ -1,3 +1,11 @@
+/**
+ * search.service.ts
+ * Stash
+ *
+ * Created on 01/13/2026
+ * Copyright (c) 2026 a-gib. Licensed under the MIT License.
+ */
+
 import prisma from '../utils/db.js';
 import { MediaService, type MediaRecord } from './media.service.js';
 

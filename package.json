@@ -19,8 +19,8 @@
     "db:studio": "prisma studio"
   },
   "keywords": ["discord", "bot", "stash", "media"],
-  "author": "",
-  "license": "ISC",
+  "author": "a-gib",
+  "license": "MIT",
   "packageManager": "pnpm@10.28.0",
   "dependencies": {
     "@prisma/client": "^6.2.0",

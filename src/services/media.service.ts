@@ -1,3 +1,11 @@
+/**
+ * media.service.ts
+ * Stash
+ *
+ * Created on 01/13/2026
+ * Copyright (c) 2026 a-gib. Licensed under the MIT License.
+ */
+
 import prisma from '../utils/db.js';
 import { IMAGE_EXTENSIONS, GIF_EXTENSION, VIDEO_EXTENSIONS } from '../constants.js';
 

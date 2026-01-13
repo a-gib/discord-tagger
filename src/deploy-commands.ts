@@ -1,3 +1,11 @@
+/**
+ * deploy-commands.ts
+ * Stash
+ *
+ * Created on 01/13/2026
+ * Copyright (c) 2026 a-gib. Licensed under the MIT License.
+ */
+
 import { REST, Routes, SlashCommandBuilder, ContextMenuCommandBuilder, ApplicationCommandType } from 'discord.js';
 import dotenv from 'dotenv';
 

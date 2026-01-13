@@ -1,3 +1,11 @@
+/**
+ * validation.ts
+ * Stash
+ *
+ * Created on 01/13/2026
+ * Copyright (c) 2026 a-gib. Licensed under the MIT License.
+ */
+
 import type { ChatInputCommandInteraction, ModalSubmitInteraction } from 'discord.js';
 import { MessageFlags } from 'discord.js';
 import { TagService } from '../services/tag.service.js';
