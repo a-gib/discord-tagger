@@ -1,0 +1,38 @@
+// Prisma schema for Tagger Discord Bot
+// Database: PostgreSQL (production)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Media {
+  id        String   @id @default(cuid())
+  mediaUrl  String   // Discord CDN or external URL
+  mediaType String   // 'image', 'gif', 'video'
+  tags      String[] // Native PostgreSQL array
+
+  // Discord context
+  guildId   String // Server where it was stored
+  userId    String // User who stored it
+  channelId String // Channel where stored
+  messageId String? // Original message (if from context menu)
+
+  // Metadata
+  fileName    String?
+  fileSize    Int? // bytes
+  width       Int?
+  height      Int?
+  recallCount Int    @default(0) // Track how many times this was recalled/sent
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([guildId])
+  @@index([userId])
+  @@index([recallCount])
+}
