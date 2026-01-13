@@ -5,6 +5,7 @@ import {
   ChannelType,
   MessageFlags,
   PermissionFlagsBits,
+  AttachmentBuilder,
 } from 'discord.js';
 import { SearchService } from '../services/search.service.js';
 import { TagService } from '../services/tag.service.js';
@@ -14,6 +15,11 @@ import type { MediaRecord } from '../services/media.service.js';
 
 export const recallSessions = new Map<string, MediaRecord[]>();
 export const replyTargets = new Map<string, { channelId: string; messageId: string }>();
+
+function getExtension(url: string): string {
+  const match = url.match(/\.(png|jpg|jpeg|gif|webp|mp4|mov|webm)/i);
+  return match ? match[1] : 'bin';
+}
 
 export async function handleRecallCommand(interaction: ChatInputCommandInteraction) {
   if (interaction.guild && interaction.channel && interaction.channel.type !== ChannelType.DM && 'guild' in interaction.channel) {
@@ -109,22 +115,53 @@ export async function handleRecallButton(interaction: ButtonInteraction) {
       'send' in interaction.channel
     ) {
       try {
-        const messageContent = `-# Sent by: <@${userId}> | Tags: ${media.tags.join(', ')} | [↗](${media.mediaUrl})`;
+        const isDiscordCdn = media.mediaUrl.includes('cdn.discordapp.com') ||
+                            media.mediaUrl.includes('media.discordapp.net');
 
-        if (replyTarget) {
-          const targetChannel = await interaction.client.channels.fetch(replyTarget.channelId);
-          if (targetChannel && 'messages' in targetChannel) {
-            const targetMessage = await targetChannel.messages.fetch(replyTarget.messageId);
-            await targetMessage.reply({
-              content: messageContent,
+        if (isDiscordCdn) {
+          const response = await fetch(media.mediaUrl);
+          if (!response.ok) throw new Error('Failed to fetch media');
+
+          const buffer = Buffer.from(await response.arrayBuffer());
+          const filename = media.fileName || `media.${getExtension(media.mediaUrl)}`;
+          const attachment = new AttachmentBuilder(buffer, { name: filename });
+          const metadataText = `-# Sent by: <@${userId}> | Tags: ${media.tags.join(', ')}`;
+
+          if (replyTarget) {
+            const targetChannel = await interaction.client.channels.fetch(replyTarget.channelId);
+            if (targetChannel && 'messages' in targetChannel) {
+              const targetMessage = await targetChannel.messages.fetch(replyTarget.messageId);
+              await targetMessage.reply({
+                content: metadataText,
+                files: [attachment],
+                allowedMentions: { parse: [] },
+              });
+            }
+          } else {
+            await interaction.channel.send({
+              content: metadataText,
+              files: [attachment],
               allowedMentions: { parse: [] },
             });
           }
         } else {
-          await interaction.channel.send({
-            content: messageContent,
-            allowedMentions: { parse: [] },
-          });
+          const messageContent = `-# Sent by: <@${userId}> | Tags: ${media.tags.join(', ')}\n${media.mediaUrl}`;
+
+          if (replyTarget) {
+            const targetChannel = await interaction.client.channels.fetch(replyTarget.channelId);
+            if (targetChannel && 'messages' in targetChannel) {
+              const targetMessage = await targetChannel.messages.fetch(replyTarget.messageId);
+              await targetMessage.reply({
+                content: messageContent,
+                allowedMentions: { parse: [] },
+              });
+            }
+          } else {
+            await interaction.channel.send({
+              content: messageContent,
+              allowedMentions: { parse: [] },
+            });
+          }
         }
 
         await MediaService.incrementRecallCount(media.id);
