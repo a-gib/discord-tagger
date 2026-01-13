@@ -1,8 +1,6 @@
 import {
   ChatInputCommandInteraction,
   ButtonInteraction,
-  EmbedBuilder,
-  Colors,
   MessageFlags,
 } from 'discord.js';
 import { SearchService } from '../services/search.service.js';

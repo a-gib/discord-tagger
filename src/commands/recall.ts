@@ -1,8 +1,6 @@
 import {
   ChatInputCommandInteraction,
   ButtonInteraction,
-  EmbedBuilder,
-  Colors,
   ChannelType,
   MessageFlags,
   PermissionFlagsBits,
@@ -18,9 +16,9 @@ const recallSessions = new Map<string, MediaRecord[]>();
 
 export async function handleRecallCommand(interaction: ChatInputCommandInteraction) {
   // Check if user has permission to embed links in this channel
-  if (interaction.guild && interaction.channel && interaction.channel.type !== ChannelType.DM) {
+  if (interaction.guild && interaction.channel && interaction.channel.type !== ChannelType.DM && 'guild' in interaction.channel) {
     const member = interaction.guild.members.cache.get(interaction.user.id);
-    const hasEmbedPermission = member?.permissionsIn(interaction.channel).has(PermissionFlagsBits.EmbedLinks) ?? false;
+    const hasEmbedPermission = member?.permissionsIn(interaction.channel.id).has(PermissionFlagsBits.EmbedLinks) ?? false;
 
     if (!hasEmbedPermission) {
       await interaction.reply({

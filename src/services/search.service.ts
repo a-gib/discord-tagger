@@ -29,7 +29,7 @@ export class SearchService {
 
     // Score each media entry by tag overlap
     const scored: ScoredMedia[] = allMedia
-      .map((media): ScoredMedia => {
+      .map((media: any): ScoredMedia => {
         const mediaTags = media.tags;
         const matchedTags = searchTags.filter((tag) => mediaTags.includes(tag));
 
@@ -60,7 +60,7 @@ export class SearchService {
         };
       })
       // Only keep media with at least one matching tag
-      .filter((item): item is ScoredMedia => item.score > 0);
+      .filter((item: any): item is ScoredMedia => item.score > 0);
 
     // Sort by: 1) score (most matching tags), 2) recall count (most popular), 3) creation date (newest)
     scored.sort((a, b) => {
@@ -97,7 +97,7 @@ export class SearchService {
     });
 
     // Convert to MediaRecord format
-    return allMedia.map((media) => {
+    return allMedia.map((media: any) => {
       const mediaRecord: MediaRecord = {
         id: media.id,
         mediaUrl: media.mediaUrl,
