@@ -103,16 +103,47 @@ const commands = [
   new ContextMenuCommandBuilder()
     .setName('Delete Tagger Message')
     .setType(ApplicationCommandType.Message),
-].map((command) => command.toJSON());
+];
+
+let commandsJSON = commands.map((command) => command.toJSON());
+
+const debugMode = process.env.DEBUG_MODE === 'true';
+
+if (debugMode) {
+  console.log('⚙️  DEBUG_MODE enabled - registering debug commands');
+  const debugCommand = new SlashCommandBuilder()
+    .setName('debug')
+    .setDescription('Debug commands (owner only)')
+    .addSubcommand((sub) =>
+      sub.setName('stats').setDescription('Show bot statistics')
+    )
+    .addSubcommand((sub) =>
+      sub.setName('health').setDescription('Show bot health')
+    )
+    .addSubcommand((sub) =>
+      sub
+        .setName('purge-guild')
+        .setDescription('Soft-delete all media for a guild')
+        .addStringOption((opt) =>
+          opt
+            .setName('guild_id')
+            .setDescription('Guild ID to purge')
+            .setRequired(true)
+        )
+    )
+    .toJSON();
+
+  commandsJSON.push(debugCommand);
+}
 
 const rest = new REST({ version: '10' }).setToken(token);
 
 async function deployCommands() {
   try {
-    console.log(`🚀 Started refreshing ${commands.length} application (/) commands.`);
+    console.log(`🚀 Started refreshing ${commandsJSON.length} application (/) commands.`);
 
     const data = await rest.put(Routes.applicationCommands(clientId), {
-      body: commands,
+      body: commandsJSON,
     });
 
     console.log(

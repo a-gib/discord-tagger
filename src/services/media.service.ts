@@ -117,6 +117,20 @@ export class MediaService {
     });
   }
 
+  static async purgeGuild(guildId: string): Promise<number> {
+    const result = await prisma.media.updateMany({
+      where: {
+        guildId,
+        deletedAt: null,
+      },
+      data: {
+        deletedAt: new Date(),
+      },
+    });
+
+    return result.count;
+  }
+
   private static parseMediaRecord(media: {
     id: string;
     mediaUrl: string;

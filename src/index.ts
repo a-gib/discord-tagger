@@ -5,6 +5,7 @@ import { handleRecallCommand, handleRecallButton, handleDeleteTaggerMessage } fr
 import { handleDeleteCommand, handleDeleteButton } from './commands/delete.js';
 import { handleTopCommand, handleTopButton } from './commands/top.js';
 import { handleHelpCommand } from './commands/help.js';
+import { handleDebugCommand } from './commands/debug.js';
 import {
   handleContextMenuCommand,
   handleModalSubmit,
@@ -56,6 +57,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
           break;
         case 'help':
           await handleHelpCommand(interaction);
+          break;
+        case 'debug':
+          await handleDebugCommand(interaction);
           break;
       }
     }

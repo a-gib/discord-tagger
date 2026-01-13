@@ -7,7 +7,7 @@ import { SearchService } from '../services/search.service.js';
 import { createMediaEmbed, createNavigationButtons } from '../utils/embeds.js';
 import type { MediaRecord } from '../services/media.service.js';
 
-const topSessions = new Map<string, MediaRecord[]>();
+export const topSessions = new Map<string, MediaRecord[]>();
 
 export async function handleTopCommand(interaction: ChatInputCommandInteraction) {
   const typeFilter = interaction.options.getString('type', false);

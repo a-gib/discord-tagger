@@ -10,7 +10,7 @@ import { TagService } from '../services/tag.service.js';
 import { createMediaEmbed, createNavigationButtons } from '../utils/embeds.js';
 import type { MediaRecord } from '../services/media.service.js';
 
-const deleteSessions = new Map<string, MediaRecord[]>();
+export const deleteSessions = new Map<string, MediaRecord[]>();
 
 export async function handleDeleteCommand(interaction: ChatInputCommandInteraction) {
   const tagsInput = interaction.options.getString('tags', true);
