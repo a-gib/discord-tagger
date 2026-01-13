@@ -92,7 +92,7 @@ export function createHelpEmbed(): EmbedBuilder {
       {
         name: '💡 Quick Save',
         value:
-          '**Right-click a message → Apps → "Save to Tagger"**',
+          '**Right-click a message → Apps → "Save to Stash"**',
         inline: false,
       },
       {

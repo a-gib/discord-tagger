@@ -1,4 +1,4 @@
-// Prisma schema for Tagger Discord Bot
+// Prisma schema for Stash Discord Bot
 // Database: PostgreSQL (production)
 
 generator client {

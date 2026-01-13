@@ -1,7 +1,7 @@
 import { Client, GatewayIntentBits, Events, MessageFlags } from 'discord.js';
 import dotenv from 'dotenv';
 import { handleStoreCommand } from './commands/store.js';
-import { handleRecallCommand, handleRecallButton, handleDeleteTaggerMessage } from './commands/recall.js';
+import { handleRecallCommand, handleRecallButton, handleDeleteStashMessage } from './commands/recall.js';
 import { handleDeleteCommand, handleDeleteButton } from './commands/delete.js';
 import { handleTopCommand, handleTopButton } from './commands/top.js';
 import { handleHelpCommand } from './commands/help.js';
@@ -77,12 +77,12 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
 
     if (interaction.isMessageContextMenuCommand()) {
-      if (interaction.commandName === 'Save to Tagger') {
+      if (interaction.commandName === 'Save to Stash') {
         await handleContextMenuCommand(interaction);
-      } else if (interaction.commandName === 'Reply with Tagger') {
+      } else if (interaction.commandName === 'Reply with Stash') {
         await handleReplyContextMenu(interaction);
-      } else if (interaction.commandName === 'Delete Tagger Message') {
-        await handleDeleteTaggerMessage(interaction);
+      } else if (interaction.commandName === 'Delete Stash Message') {
+        await handleDeleteStashMessage(interaction);
       }
     }
 

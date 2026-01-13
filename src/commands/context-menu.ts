@@ -98,7 +98,7 @@ export async function handleContextMenuCommand(interaction: MessageContextMenuCo
   if (mediaItems.length === 1) {
     const modal = new ModalBuilder()
       .setCustomId(`save_media_${message.id}_0`)
-      .setTitle('Save Media to Tagger');
+      .setTitle('Save Media to Stash');
 
     const tagsInput = new TextInputBuilder()
       .setCustomId('tags')
@@ -160,7 +160,7 @@ export async function handleMediaSelectMenu(interaction: StringSelectMenuInterac
 
   const modal = new ModalBuilder()
     .setCustomId(`save_media_${messageId}_${selectedValue}`)
-    .setTitle('Save Media to Tagger');
+    .setTitle('Save Media to Stash');
 
   const tagsInput = new TextInputBuilder()
     .setCustomId('tags')
@@ -288,7 +288,7 @@ export async function handleReplyContextMenu(interaction: MessageContextMenuComm
 
   const modal = new ModalBuilder()
     .setCustomId(`reply_media_${targetMessage.id}`)
-    .setTitle('Reply with Tagger');
+    .setTitle('Reply with Stash');
 
   const tagsInput = new TextInputBuilder()
     .setCustomId('tags')
@@ -348,7 +348,7 @@ export async function handleReplyModalSubmit(interaction: ModalSubmitInteraction
       flags: MessageFlags.Ephemeral,
     });
   } catch (error) {
-    console.error('Error in reply with tagger:', error);
+    console.error('Error in reply with stash:', error);
     await interaction.reply({
       content: '❗ Search failed.',
       flags: MessageFlags.Ephemeral,

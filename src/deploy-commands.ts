@@ -90,18 +90,18 @@ const commands = [
 
   new SlashCommandBuilder()
     .setName('help')
-    .setDescription('Explain how to use Tagger'),
+    .setDescription('Explain how to use Stash'),
 
   new ContextMenuCommandBuilder()
-    .setName('Save to Tagger')
+    .setName('Save to Stash')
     .setType(ApplicationCommandType.Message),
 
   new ContextMenuCommandBuilder()
-    .setName('Reply with Tagger')
+    .setName('Reply with Stash')
     .setType(ApplicationCommandType.Message),
 
   new ContextMenuCommandBuilder()
-    .setName('Delete Tagger Message')
+    .setName('Delete Stash Message')
     .setType(ApplicationCommandType.Message),
 ];
 

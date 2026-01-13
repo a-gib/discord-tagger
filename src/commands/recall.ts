@@ -226,12 +226,12 @@ export async function handleRecallButton(interaction: ButtonInteraction) {
   });
 }
 
-export async function handleDeleteTaggerMessage(interaction: MessageContextMenuCommandInteraction) {
+export async function handleDeleteStashMessage(interaction: MessageContextMenuCommandInteraction) {
   const message = interaction.targetMessage;
 
   if (message.author.id !== interaction.client.user?.id) {
     await interaction.reply({
-      content: '❌ This is not a Tagger message.',
+      content: '❌ This is not a Stash message.',
       flags: MessageFlags.Ephemeral,
     });
     return;
@@ -264,7 +264,7 @@ export async function handleDeleteTaggerMessage(interaction: MessageContextMenuC
     await message.delete();
     await interaction.deleteReply();
   } catch (error) {
-    console.error('Error deleting Tagger message:', error);
+    console.error('Error deleting Stash message:', error);
     await interaction.reply({
       content: '❌ Failed to delete. Make sure I have permission to manage messages.',
       flags: MessageFlags.Ephemeral,
