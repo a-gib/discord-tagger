@@ -114,22 +114,26 @@ export async function handleRecallButton(interaction: ButtonInteraction) {
                              media.mediaUrl.toLowerCase().includes('giphy.com/gifs/');
 
         if (isGifProvider) {
-          const embed = new EmbedBuilder()
-            .setDescription(`-# Sent by: <@${userId}> | Tags: ${media.tags.join(', ')}`)
-            .setImage(media.mediaUrl);
-
           if (replyTarget) {
             const targetChannel = await interaction.client.channels.fetch(replyTarget.channelId);
             if (targetChannel && 'messages' in targetChannel) {
               const targetMessage = await targetChannel.messages.fetch(replyTarget.messageId);
-              await targetMessage.reply({
-                embeds: [embed],
+              const sentMessage = await targetMessage.reply({
+                content: media.mediaUrl,
+                allowedMentions: { parse: [] },
+              });
+              await sentMessage.reply({
+                content: `-# Sent by: <@${userId}> | Tags: ${media.tags.join(', ')}`,
                 allowedMentions: { parse: [] },
               });
             }
           } else {
-            await interaction.channel.send({
-              embeds: [embed],
+            const sentMessage = await interaction.channel.send({
+              content: media.mediaUrl,
+              allowedMentions: { parse: [] },
+            });
+            await sentMessage.reply({
+              content: `-# Sent by: <@${userId}> | Tags: ${media.tags.join(', ')}`,
               allowedMentions: { parse: [] },
             });
           }
