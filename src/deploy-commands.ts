@@ -103,6 +103,10 @@ const commands = [
   new ContextMenuCommandBuilder()
     .setName('Reply with Tagger')
     .setType(ApplicationCommandType.Message),
+
+  new ContextMenuCommandBuilder()
+    .setName('Delete Tagger Message')
+    .setType(ApplicationCommandType.Message),
 ].map((command) => command.toJSON());
 
 // Create REST client and deploy commands

@@ -1,6 +1,7 @@
 import {
   ChatInputCommandInteraction,
   ButtonInteraction,
+  MessageContextMenuCommandInteraction,
   ChannelType,
   MessageFlags,
   PermissionFlagsBits,
@@ -212,4 +213,60 @@ export async function handleRecallButton(interaction: ButtonInteraction) {
     embeds: [embed],
     components: [buttons],
   });
+}
+
+/**
+ * Handle "Delete Tagger Message" context menu command
+ */
+export async function handleDeleteTaggerMessage(interaction: MessageContextMenuCommandInteraction) {
+  const message = interaction.targetMessage;
+
+  // Check if message was sent by the bot
+  if (message.author.id !== interaction.client.user?.id) {
+    await interaction.reply({
+      content: '❌ This is not a Tagger message.',
+      flags: MessageFlags.Ephemeral,
+    });
+    return;
+  }
+
+  // Parse sender ID from message content
+  const senderMatch = message.content.match(/-# Sent by: <@(\d+)>/);
+  if (!senderMatch) {
+    await interaction.reply({
+      content: '❌ Could not identify the original sender of this message.',
+      flags: MessageFlags.Ephemeral,
+    });
+    return;
+  }
+
+  const senderId = senderMatch[1];
+
+  // Check permissions: original sender OR has Manage Messages
+  const hasPermission =
+    interaction.user.id === senderId ||
+    interaction.memberPermissions?.has(PermissionFlagsBits.ManageMessages);
+
+  if (!hasPermission) {
+    await interaction.reply({
+      content: '❌ Only the original sender or moderators can delete this message.',
+      flags: MessageFlags.Ephemeral,
+    });
+    return;
+  }
+
+  // Delete the message
+  try {
+    await message.delete();
+    await interaction.reply({
+      content: '✅ Message deleted.',
+      flags: MessageFlags.Ephemeral,
+    });
+  } catch (error) {
+    console.error('Error deleting Tagger message:', error);
+    await interaction.reply({
+      content: '❌ Failed to delete message. Make sure I have permission to manage messages.',
+      flags: MessageFlags.Ephemeral,
+    });
+  }
 }

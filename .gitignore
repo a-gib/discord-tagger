@@ -30,3 +30,6 @@ prisma/*.db-journal
 
 # Temporary files
 tmpclaude-*
+
+# Claude Code
+.claude/
