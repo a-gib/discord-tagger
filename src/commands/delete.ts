@@ -56,7 +56,7 @@ export async function handleDeleteCommand(interaction: ChatInputCommandInteracti
     const buttons = createNavigationButtons(1, results.length, 'delete', results[0]!.id);
 
     await interaction.reply({
-      content: `Found ${results.length} result(s) for: ${searchTags.join(', ')}\n⚠️ You can only delete your own media (or if you're an admin).`,
+      content: `Found ${results.length} result(s) for: ${searchTags.join(', ')}\n⚠️ You can only delete your own media (unless you're a server admin).`,
       embeds: [embed],
       components: [buttons],
       flags: MessageFlags.Ephemeral,
