@@ -7,6 +7,7 @@ export interface MediaData {
   guildId: string;
   userId: string;
   fileName?: string;
+  thumbnailUrl?: string;
 }
 
 export interface MediaRecord {
@@ -17,6 +18,7 @@ export interface MediaRecord {
   guildId: string;
   userId: string;
   fileName?: string;
+  thumbnailUrl?: string;
   recallCount: number;
   createdAt: Date;
   deletedAt: Date | null;
@@ -29,6 +31,10 @@ export class MediaService {
     const imageExts = ['.png', '.jpg', '.jpeg', '.webp'];
     const gifExt = '.gif';
     const videoExts = ['.mp4', '.mov', '.webm'];
+
+    if (lowerUrl.includes('tenor.com/view/') || lowerUrl.includes('giphy.com/gifs/')) {
+      return { valid: true, type: 'gif' };
+    }
 
     if (imageExts.some((ext) => lowerUrl.includes(ext))) {
       return { valid: true, type: 'image' };
@@ -54,6 +60,7 @@ export class MediaService {
         guildId: data.guildId,
         userId: data.userId,
         ...(data.fileName !== undefined && { fileName: data.fileName }),
+        ...(data.thumbnailUrl !== undefined && { thumbnailUrl: data.thumbnailUrl }),
       },
     });
 
@@ -118,6 +125,7 @@ export class MediaService {
     guildId: string;
     userId: string;
     fileName: string | null;
+    thumbnailUrl: string | null;
     recallCount: number;
     createdAt: Date;
     deletedAt: Date | null;
@@ -130,6 +138,7 @@ export class MediaService {
       guildId: media.guildId,
       userId: media.userId,
       ...(media.fileName !== null && { fileName: media.fileName }),
+      ...(media.thumbnailUrl !== null && { thumbnailUrl: media.thumbnailUrl }),
       recallCount: media.recallCount,
       createdAt: media.createdAt,
       deletedAt: media.deletedAt,

@@ -31,7 +31,7 @@ export function createMediaEmbed(
     )
     .setFooter({ text: `ID: ${media.id}` })
     .setTimestamp(media.createdAt)
-    .setImage(media.mediaUrl);
+    .setImage(media.thumbnailUrl || media.mediaUrl);
 
   if (media.fileName) {
     embed.setDescription(`📁 ${media.fileName}`);

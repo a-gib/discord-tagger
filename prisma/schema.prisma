@@ -21,8 +21,9 @@ model Media {
   userId    String // User who stored it
 
   // Metadata
-  fileName    String?
-  recallCount Int      @default(0) // Track how many times this was recalled/sent
+  fileName     String?
+  thumbnailUrl String? // For GIF providers - thumbnail to show in embeds
+  recallCount  Int      @default(0) // Track how many times this was recalled/sent
 
   createdAt DateTime  @default(now())
   deletedAt DateTime? // Soft delete timestamp

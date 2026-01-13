@@ -17,12 +17,12 @@ import { SearchService } from '../services/search.service.js';
 import { replyTargets, recallSessions } from './recall.js';
 import { createMediaEmbed, createNavigationButtons } from '../utils/embeds.js';
 
-const mediaSelectionCache = new Map<string, Array<{ url: string; type: string; label: string }>>();
+const mediaSelectionCache = new Map<string, Array<{ url: string; type: string; label: string; thumbnailUrl?: string }>>();
 
 export async function handleContextMenuCommand(interaction: MessageContextMenuCommandInteraction) {
   const message = interaction.targetMessage;
 
-  const mediaItems: Array<{ url: string; type: string; label: string }> = [];
+  const mediaItems: Array<{ url: string; type: string; label: string; thumbnailUrl?: string }> = [];
 
 
   let attachmentIndex = 1;
@@ -43,17 +43,15 @@ export async function handleContextMenuCommand(interaction: MessageContextMenuCo
   for (const embed of message.embeds) {
     const isGifProvider = embed.provider?.name === 'Tenor' || embed.provider?.name === 'GIPHY';
 
-    if (isGifProvider) {
-      const directUrl = embed.video?.url || embed.image?.url;
-      if (directUrl) {
-        mediaItems.push({
-          url: directUrl,
-          type: 'gif',
-          label: `GIF from ${embed.provider?.name}`,
-        });
-        embedIndex++;
-        continue;
-      }
+    if (isGifProvider && embed.url) {
+      mediaItems.push({
+        url: embed.url,
+        type: 'gif',
+        label: `GIF from ${embed.provider?.name}`,
+        thumbnailUrl: embed.thumbnail?.url,
+      });
+      embedIndex++;
+      continue;
     }
 
     if (embed.image?.url) {
@@ -259,6 +257,7 @@ export async function handleModalSubmit(interaction: ModalSubmitInteraction) {
         tags,
         guildId: interaction.guildId!,
         userId: interaction.user.id,
+        ...(selectedMedia.thumbnailUrl && { thumbnailUrl: selectedMedia.thumbnailUrl }),
       });
 
       const embed = new EmbedBuilder()
@@ -270,7 +269,7 @@ export async function handleModalSubmit(interaction: ModalSubmitInteraction) {
         )
         .setFooter({ text: `ID: ${media.id}` })
         .setTimestamp()
-        .setImage(mediaUrl);
+        .setImage(media.thumbnailUrl || mediaUrl);
 
       await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
     }
