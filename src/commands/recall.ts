@@ -119,7 +119,8 @@ export async function handleRecallButton(interaction: ButtonInteraction) {
                             media.mediaUrl.includes('media.discordapp.net');
 
         if (isDiscordCdn) {
-          const response = await fetch(media.mediaUrl);
+          const cleanUrl = media.mediaUrl.replace(/\\&/g, '&');
+          const response = await fetch(cleanUrl);
           if (!response.ok) throw new Error('Failed to fetch media');
 
           const buffer = Buffer.from(await response.arrayBuffer());
@@ -259,7 +260,7 @@ export async function handleDeleteTaggerMessage(interaction: MessageContextMenuC
   }
 
   try {
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     await message.delete();
     await interaction.deleteReply();
   } catch (error) {
