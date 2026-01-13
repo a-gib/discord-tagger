@@ -12,7 +12,10 @@ import { createMediaEmbed, createNavigationButtons } from '../utils/embeds.js';
 import type { MediaRecord } from '../services/media.service.js';
 
 // Store active recall sessions (userId -> search results)
-const recallSessions = new Map<string, MediaRecord[]>();
+export const recallSessions = new Map<string, MediaRecord[]>();
+
+// Store reply targets (userId -> { channelId, messageId })
+export const replyTargets = new Map<string, { channelId: string; messageId: string }>();
 
 export async function handleRecallCommand(interaction: ChatInputCommandInteraction) {
   // Check if user has permission to embed links in this channel
@@ -109,8 +112,11 @@ export async function handleRecallButton(interaction: ButtonInteraction) {
   }
 
   if (action === 'send') {
-    // Send media to channel (public message)
+    // Send media to channel (public message) or as reply
     const media = results[currentIndex]!;
+
+    // Check if this is a reply session
+    const replyTarget = replyTargets.get(userId);
 
     // Check if channel supports sending messages
     if (
@@ -123,10 +129,23 @@ export async function handleRecallButton(interaction: ButtonInteraction) {
         // Send message with footer above URL (sent by + tags in subtext)
         const messageContent = `-# Sent by: <@${userId}> | Tags: ${media.tags.join(', ')}\n${media.mediaUrl}`;
 
-        await interaction.channel.send({
-          content: messageContent,
-          allowedMentions: { parse: [] }, // Silent mention - no notification
-        });
+        if (replyTarget) {
+          // Send as reply to target message
+          const targetChannel = await interaction.client.channels.fetch(replyTarget.channelId);
+          if (targetChannel && 'messages' in targetChannel) {
+            const targetMessage = await targetChannel.messages.fetch(replyTarget.messageId);
+            await targetMessage.reply({
+              content: messageContent,
+              allowedMentions: { parse: [] },
+            });
+          }
+        } else {
+          // Send as regular message
+          await interaction.channel.send({
+            content: messageContent,
+            allowedMentions: { parse: [] }, // Silent mention - no notification
+          });
+        }
 
         // Increment recall count
         await MediaService.incrementRecallCount(media.id);
@@ -138,8 +157,9 @@ export async function handleRecallButton(interaction: ButtonInteraction) {
           components: [],
         });
 
-        // Clean up session
+        // Clean up sessions
         recallSessions.delete(userId);
+        replyTargets.delete(userId);
         return;
       } catch (error: unknown) {
         console.error('Error sending media:', error);
@@ -161,6 +181,7 @@ export async function handleRecallButton(interaction: ButtonInteraction) {
           });
         }
         recallSessions.delete(userId);
+        replyTargets.delete(userId);
         return;
       }
     } else {

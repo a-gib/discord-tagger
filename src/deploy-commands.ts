@@ -95,9 +95,13 @@ const commands = [
     .setName('help')
     .setDescription('Show help information about Tagger bot'),
 
-  // Context menu command for saving media from messages
+  // Context menu commands
   new ContextMenuCommandBuilder()
     .setName('Save to Tagger')
+    .setType(ApplicationCommandType.Message),
+
+  new ContextMenuCommandBuilder()
+    .setName('Reply with Tagger')
     .setType(ApplicationCommandType.Message),
 ].map((command) => command.toJSON());
 

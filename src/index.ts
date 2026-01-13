@@ -5,7 +5,13 @@ import { handleRecallCommand, handleRecallButton } from './commands/recall.js';
 import { handleDeleteCommand, handleDeleteButton } from './commands/delete.js';
 import { handleTopCommand, handleTopButton } from './commands/top.js';
 import { handleHelpCommand } from './commands/help.js';
-import { handleContextMenuCommand, handleModalSubmit, handleMediaSelectMenu } from './commands/context-menu.js';
+import {
+  handleContextMenuCommand,
+  handleModalSubmit,
+  handleMediaSelectMenu,
+  handleReplyContextMenu,
+  handleReplyModalSubmit,
+} from './commands/context-menu.js';
 import prisma from './utils/db.js';
 
 // Load environment variables
@@ -78,6 +84,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
     if (interaction.isMessageContextMenuCommand()) {
       if (interaction.commandName === 'Save to Tagger') {
         await handleContextMenuCommand(interaction);
+      } else if (interaction.commandName === 'Reply with Tagger') {
+        await handleReplyContextMenu(interaction);
       }
     }
 
@@ -92,6 +100,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
     if (interaction.isModalSubmit()) {
       if (interaction.customId.startsWith('save_media_')) {
         await handleModalSubmit(interaction);
+      } else if (interaction.customId.startsWith('reply_media_')) {
+        await handleReplyModalSubmit(interaction);
       }
     }
   } catch (error) {

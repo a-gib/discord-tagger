@@ -13,6 +13,9 @@ import {
 } from 'discord.js';
 import { MediaService } from '../services/media.service.js';
 import { TagService } from '../services/tag.service.js';
+import { SearchService } from '../services/search.service.js';
+import { replyTargets, recallSessions } from './recall.js';
+import { createMediaEmbed, createNavigationButtons } from '../utils/embeds.js';
 
 // Store media URLs temporarily for select menu interactions
 const mediaSelectionCache = new Map<string, Array<{ url: string; type: string; label: string }>>();
@@ -285,6 +288,93 @@ export async function handleModalSubmit(interaction: ModalSubmitInteraction) {
     console.error('Error saving media from context menu:', error);
     await interaction.reply({
       content: '❌ Failed to save media. Please try again later.',
+      flags: MessageFlags.Ephemeral,
+    });
+  }
+}
+
+/**
+ * Handle "Reply with Tagger" context menu command
+ */
+export async function handleReplyContextMenu(interaction: MessageContextMenuCommandInteraction) {
+  const targetMessage = interaction.targetMessage;
+
+  // Show modal for tag input
+  const modal = new ModalBuilder()
+    .setCustomId(`reply_media_${targetMessage.id}`)
+    .setTitle('Reply with Tagger');
+
+  const tagsInput = new TextInputBuilder()
+    .setCustomId('tags')
+    .setLabel('Tags (space or comma separated)')
+    .setStyle(TextInputStyle.Short)
+    .setPlaceholder('e.g., plumber guh')
+    .setRequired(true)
+    .setMaxLength(500);
+
+  const row = new ActionRowBuilder<TextInputBuilder>().addComponents(tagsInput);
+  modal.addComponents(row);
+
+  await interaction.showModal(modal);
+}
+
+/**
+ * Handle modal submit for "Reply with Tagger"
+ */
+export async function handleReplyModalSubmit(interaction: ModalSubmitInteraction) {
+  // Extract message ID from custom ID
+  const messageId = interaction.customId.replace('reply_media_', '');
+
+  // Get tags from modal
+  const tagsInput = interaction.fields.getTextInputValue('tags');
+  const tags = TagService.normalizeTags(tagsInput);
+
+  if (tags.length === 0) {
+    await interaction.reply({
+      content: '❌ No valid tags provided. Tags must be alphanumeric + underscore only.',
+      flags: MessageFlags.Ephemeral,
+    });
+    return;
+  }
+
+  try {
+    // Search for media
+    const results = await SearchService.searchByTags(
+      interaction.guildId!,
+      tags
+    );
+
+    if (results.length === 0) {
+      await interaction.reply({
+        content: `❌ No media found matching tags: ${tags.join(', ')}`,
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+
+    // Store reply target
+    replyTargets.set(interaction.user.id, {
+      channelId: interaction.channelId!,
+      messageId: messageId,
+    });
+
+    // Store recall session
+    recallSessions.set(interaction.user.id, results);
+
+    // Show first result with carousel
+    const embed = createMediaEmbed(results[0]!, 1, results.length);
+    const buttons = createNavigationButtons(1, results.length, 'recall', results[0]!.id);
+
+    await interaction.reply({
+      content: `Found ${results.length} result(s) for: ${tags.join(', ')}. Click "Send" to reply.`,
+      embeds: [embed],
+      components: [buttons],
+      flags: MessageFlags.Ephemeral,
+    });
+  } catch (error) {
+    console.error('Error in reply with tagger:', error);
+    await interaction.reply({
+      content: '❌ An error occurred while searching for media.',
       flags: MessageFlags.Ephemeral,
     });
   }
