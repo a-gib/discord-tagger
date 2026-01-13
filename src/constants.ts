@@ -6,6 +6,13 @@
 // Set BOT_OWNER_ID in .env to enable /debug command access
 export const BOT_OWNER_ID = process.env.BOT_OWNER_ID;
 
+// Guild restrictions (from environment variable)
+// Comma-separated list of guild IDs where the bot is allowed to operate
+// If empty or undefined, bot works in all guilds
+export const ALLOWED_GUILD_IDS = process.env.ALLOWED_GUILD_IDS
+  ? process.env.ALLOWED_GUILD_IDS.split(',').map(id => id.trim()).filter(id => id.length > 0)
+  : null;
+
 // Session timeouts
 export const SESSION_TIMEOUT_MS = 15 * 60 * 1000; // 15 minutes
 

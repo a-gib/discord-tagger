@@ -22,6 +22,7 @@ import {
   handleReplyModalSubmit,
 } from './commands/context-menu.js';
 import prisma from './utils/db.js';
+import { isGuildAllowed } from './utils/permissions.js';
 
 dotenv.config();
 
@@ -49,6 +50,17 @@ client.once('clientReady', () => {
 
 client.on(Events.InteractionCreate, async (interaction) => {
   try {
+    // Check if bot is allowed in this guild
+    if (!isGuildAllowed(interaction.guildId)) {
+      if (interaction.isRepliable()) {
+        await interaction.reply({
+          content: '❌ This server is not authorized to use this bot.',
+          flags: MessageFlags.Ephemeral,
+        });
+      }
+      return;
+    }
+
     if (interaction.isChatInputCommand()) {
       switch (interaction.commandName) {
         case 'save':
