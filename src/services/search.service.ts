@@ -3,22 +3,16 @@ import type { MediaRecord } from './media.service.js';
 
 interface ScoredMedia {
   media: MediaRecord;
-  score: number; // Number of matching tags
-  matchedTags: string[]; // Which tags matched
+  score: number;
+  matchedTags: string[];
 }
 
 export class SearchService {
-  /**
-   * Search for media by tags within a guild
-   * Returns results ranked by number of matching tags (best first)
-   * @param typeFilter - Optional media type to filter by ('image', 'gif', 'video')
-   */
   static async searchByTags(
     guildId: string,
     searchTags: string[],
     typeFilter?: string
   ): Promise<MediaRecord[]> {
-    // Get all non-deleted media in this guild, optionally filtered by type
     const allMedia = await prisma.media.findMany({
       where: {
         guildId,
@@ -28,7 +22,6 @@ export class SearchService {
       orderBy: { createdAt: 'desc' },
     });
 
-    // Score each media entry by tag overlap
     const scored: ScoredMedia[] = allMedia
       .map((media): ScoredMedia => {
         const mediaTags = media.tags;
@@ -53,32 +46,23 @@ export class SearchService {
           matchedTags,
         };
       })
-      // Only keep media with at least one matching tag
       .filter((item): item is ScoredMedia => item.score > 0);
 
-    // Sort by: 1) score (most matching tags), 2) recall count (most popular), 3) creation date (newest)
+    // Sort by: 1) matching tags, 2) popularity, 3) recency
     scored.sort((a, b) => {
-      // First: sort by number of matching tags
       if (b.score !== a.score) {
         return b.score - a.score;
       }
-      // Second: sort by recall count (popularity)
       if (b.media.recallCount !== a.media.recallCount) {
         return b.media.recallCount - a.media.recallCount;
       }
-      // Third: sort by creation date (newest first)
       return b.media.createdAt.getTime() - a.media.createdAt.getTime();
     });
 
     return scored.map((item) => item.media);
   }
 
-  /**
-   * Get top media by recall count within a guild
-   * @param typeFilter - Optional media type to filter by ('image', 'gif', 'video')
-   */
   static async getTopMedia(guildId: string, typeFilter?: string): Promise<MediaRecord[]> {
-    // Get all non-deleted media in this guild, optionally filtered by type
     const allMedia = await prisma.media.findMany({
       where: {
         guildId,
@@ -91,7 +75,6 @@ export class SearchService {
       ],
     });
 
-    // Convert to MediaRecord format
     return allMedia.map((media) => ({
       id: media.id,
       mediaUrl: media.mediaUrl,

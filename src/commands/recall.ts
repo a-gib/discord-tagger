@@ -12,14 +12,10 @@ import { MediaService } from '../services/media.service.js';
 import { createMediaEmbed, createNavigationButtons } from '../utils/embeds.js';
 import type { MediaRecord } from '../services/media.service.js';
 
-// Store active recall sessions (userId -> search results)
 export const recallSessions = new Map<string, MediaRecord[]>();
-
-// Store reply targets (userId -> { channelId, messageId })
 export const replyTargets = new Map<string, { channelId: string; messageId: string }>();
 
 export async function handleRecallCommand(interaction: ChatInputCommandInteraction) {
-  // Check if user has permission to embed links in this channel
   if (interaction.guild && interaction.channel && interaction.channel.type !== ChannelType.DM && 'guild' in interaction.channel) {
     const member = interaction.guild.members.cache.get(interaction.user.id);
     const hasEmbedPermission = member?.permissionsIn(interaction.channel.id).has(PermissionFlagsBits.EmbedLinks) ?? false;
@@ -46,7 +42,6 @@ export async function handleRecallCommand(interaction: ChatInputCommandInteracti
   }
 
   try {
-    // Search for media with optional type filter
     const results = await SearchService.searchByTags(
       interaction.guildId!,
       searchTags,
@@ -62,10 +57,8 @@ export async function handleRecallCommand(interaction: ChatInputCommandInteracti
       return;
     }
 
-    // Store session
     recallSessions.set(interaction.user.id, results);
 
-    // Show first result
     const embed = createMediaEmbed(results[0]!, 1, results.length);
     const buttons = createNavigationButtons(1, results.length, 'recall', results[0]!.id);
 
@@ -84,9 +77,6 @@ export async function handleRecallCommand(interaction: ChatInputCommandInteracti
   }
 }
 
-/**
- * Handle button interactions for recall carousel
- */
 export async function handleRecallButton(interaction: ButtonInteraction) {
   const userId = interaction.user.id;
   const results = recallSessions.get(userId);
@@ -99,10 +89,7 @@ export async function handleRecallButton(interaction: ButtonInteraction) {
     return;
   }
 
-  // Parse button action
   const [_mode, action, mediaId] = interaction.customId.split('_');
-
-  // Find current position
   const currentIndex = results.findIndex((m) => m.id === mediaId);
   if (currentIndex === -1) {
     await interaction.reply({
@@ -113,13 +100,8 @@ export async function handleRecallButton(interaction: ButtonInteraction) {
   }
 
   if (action === 'send') {
-    // Send media to channel (public message) or as reply
     const media = results[currentIndex]!;
-
-    // Check if this is a reply session
     const replyTarget = replyTargets.get(userId);
-
-    // Check if channel supports sending messages
     if (
       interaction.channel &&
       interaction.channel.type !== ChannelType.DM &&
@@ -127,11 +109,9 @@ export async function handleRecallButton(interaction: ButtonInteraction) {
       'send' in interaction.channel
     ) {
       try {
-        // Send message with footer above URL (sent by + tags in subtext)
         const messageContent = `-# Sent by: <@${userId}> | Tags: ${media.tags.join(', ')}\n${media.mediaUrl}`;
 
         if (replyTarget) {
-          // Send as reply to target message
           const targetChannel = await interaction.client.channels.fetch(replyTarget.channelId);
           if (targetChannel && 'messages' in targetChannel) {
             const targetMessage = await targetChannel.messages.fetch(replyTarget.messageId);
@@ -141,31 +121,25 @@ export async function handleRecallButton(interaction: ButtonInteraction) {
             });
           }
         } else {
-          // Send as regular message
           await interaction.channel.send({
             content: messageContent,
-            allowedMentions: { parse: [] }, // Silent mention - no notification
+            allowedMentions: { parse: [] },
           });
         }
 
-        // Increment recall count
         await MediaService.incrementRecallCount(media.id);
 
-        // Show brief success message
         await interaction.update({
           content: '✅ Sent!',
           embeds: [],
           components: [],
         });
 
-        // Clean up sessions
         recallSessions.delete(userId);
         replyTargets.delete(userId);
         return;
       } catch (error: unknown) {
         console.error('Error sending media:', error);
-
-        // Check if it's a permission error
         if (error && typeof error === 'object' && 'code' in error && error.code === 50001) {
           await interaction.update({
             content:
@@ -195,7 +169,6 @@ export async function handleRecallButton(interaction: ButtonInteraction) {
     }
   }
 
-  // Navigate previous/next
   let newIndex = currentIndex;
   if (action === 'prev') {
     newIndex = Math.max(0, currentIndex - 1);
@@ -215,13 +188,9 @@ export async function handleRecallButton(interaction: ButtonInteraction) {
   });
 }
 
-/**
- * Handle "Delete Tagger Message" context menu command
- */
 export async function handleDeleteTaggerMessage(interaction: MessageContextMenuCommandInteraction) {
   const message = interaction.targetMessage;
 
-  // Check if message was sent by the bot
   if (message.author.id !== interaction.client.user?.id) {
     await interaction.reply({
       content: '❌ This is not a Tagger message.',
@@ -230,7 +199,6 @@ export async function handleDeleteTaggerMessage(interaction: MessageContextMenuC
     return;
   }
 
-  // Parse sender ID from message content
   const senderMatch = message.content.match(/-# Sent by: <@(\d+)>/);
   if (!senderMatch) {
     await interaction.reply({
@@ -241,8 +209,6 @@ export async function handleDeleteTaggerMessage(interaction: MessageContextMenuC
   }
 
   const senderId = senderMatch[1];
-
-  // Check permissions: original sender OR has Manage Messages
   const hasPermission =
     interaction.user.id === senderId ||
     interaction.memberPermissions?.has(PermissionFlagsBits.ManageMessages);
@@ -255,7 +221,6 @@ export async function handleDeleteTaggerMessage(interaction: MessageContextMenuC
     return;
   }
 
-  // Delete the message
   try {
     await message.delete();
     await interaction.reply({

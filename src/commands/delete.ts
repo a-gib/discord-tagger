@@ -10,7 +10,6 @@ import { TagService } from '../services/tag.service.js';
 import { createMediaEmbed, createNavigationButtons } from '../utils/embeds.js';
 import type { MediaRecord } from '../services/media.service.js';
 
-// Store active delete sessions (userId -> search results)
 const deleteSessions = new Map<string, MediaRecord[]>();
 
 export async function handleDeleteCommand(interaction: ChatInputCommandInteraction) {
@@ -27,7 +26,6 @@ export async function handleDeleteCommand(interaction: ChatInputCommandInteracti
   }
 
   try {
-    // Search for media with optional type filter
     const results = await SearchService.searchByTags(
       interaction.guildId!,
       searchTags,
@@ -43,10 +41,8 @@ export async function handleDeleteCommand(interaction: ChatInputCommandInteracti
       return;
     }
 
-    // Store session
     deleteSessions.set(interaction.user.id, results);
 
-    // Show first result
     const embed = createMediaEmbed(results[0]!, 1, results.length);
     const buttons = createNavigationButtons(1, results.length, 'delete', results[0]!.id);
 
@@ -65,9 +61,6 @@ export async function handleDeleteCommand(interaction: ChatInputCommandInteracti
   }
 }
 
-/**
- * Handle button interactions for delete carousel
- */
 export async function handleDeleteButton(interaction: ButtonInteraction) {
   const userId = interaction.user.id;
   const results = deleteSessions.get(userId);
@@ -80,10 +73,7 @@ export async function handleDeleteButton(interaction: ButtonInteraction) {
     return;
   }
 
-  // Parse button action
   const [_mode, action, mediaId] = interaction.customId.split('_');
-
-  // Find current position
   const currentIndex = results.findIndex((m) => m.id === mediaId);
   if (currentIndex === -1) {
     await interaction.reply({
@@ -94,11 +84,9 @@ export async function handleDeleteButton(interaction: ButtonInteraction) {
   }
 
   if (action === 'confirm') {
-    // Check if user is admin
     const member = interaction.guild?.members.cache.get(userId);
     const isAdmin = member?.permissions.has(PermissionFlagsBits.ManageGuild) ?? false;
 
-    // Delete media
     const media = results[currentIndex]!;
     const deleted = await MediaService.deleteMedia(media.id, userId, isAdmin);
 
@@ -111,7 +99,6 @@ export async function handleDeleteButton(interaction: ButtonInteraction) {
       return;
     }
 
-    // Remove from session
     results.splice(currentIndex, 1);
 
     if (results.length === 0) {
@@ -124,7 +111,6 @@ export async function handleDeleteButton(interaction: ButtonInteraction) {
       return;
     }
 
-    // Show next media (or previous if at end)
     const newIndex = currentIndex >= results.length ? results.length - 1 : currentIndex;
     const nextMedia = results[newIndex]!;
     const position = newIndex + 1;
@@ -141,7 +127,6 @@ export async function handleDeleteButton(interaction: ButtonInteraction) {
     return;
   }
 
-  // Navigate previous/next
   let newIndex = currentIndex;
   if (action === 'prev') {
     newIndex = Math.max(0, currentIndex - 1);

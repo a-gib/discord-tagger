@@ -7,15 +7,11 @@ import {
 } from 'discord.js';
 import type { MediaRecord } from '../services/media.service.js';
 
-/**
- * Create a Discord embed for displaying media
- */
 export function createMediaEmbed(
   media: MediaRecord,
   position: number,
   total: number
 ): EmbedBuilder {
-  // Choose emoji based on media type
   const emoji =
     media.mediaType === 'gif'
       ? '🎬'
@@ -44,10 +40,6 @@ export function createMediaEmbed(
   return embed;
 }
 
-/**
- * Create navigation buttons for carousel
- * mode: 'recall' | 'delete' | 'top'
- */
 export function createNavigationButtons(
   position: number,
   total: number,
@@ -56,7 +48,6 @@ export function createNavigationButtons(
 ): ActionRowBuilder<ButtonBuilder> {
   const row = new ActionRowBuilder<ButtonBuilder>();
 
-  // Previous button (disabled if at first item)
   row.addComponents(
     new ButtonBuilder()
       .setCustomId(`${mode}_prev_${mediaId}`)
@@ -65,7 +56,6 @@ export function createNavigationButtons(
       .setDisabled(position === 1)
   );
 
-  // Next button (disabled if at last item)
   row.addComponents(
     new ButtonBuilder()
       .setCustomId(`${mode}_next_${mediaId}`)
@@ -74,7 +64,6 @@ export function createNavigationButtons(
       .setDisabled(position === total)
   );
 
-  // Action button (Send or Delete) - only for recall and delete modes
   if (mode === 'recall') {
     row.addComponents(
       new ButtonBuilder()
@@ -90,14 +79,10 @@ export function createNavigationButtons(
         .setStyle(ButtonStyle.Danger)
     );
   }
-  // For 'top' mode, no action button
 
   return row;
 }
 
-/**
- * Create help embed
- */
 export function createHelpEmbed(): EmbedBuilder {
   return new EmbedBuilder()
     .setColor(Colors.Gold)

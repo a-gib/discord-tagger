@@ -3,11 +3,9 @@ import { MediaService } from '../services/media.service.js';
 import { TagService } from '../services/tag.service.js';
 
 export async function handleStoreCommand(interaction: ChatInputCommandInteraction) {
-  // Get command options
   const url = interaction.options.getString('url', true);
   const tagsInput = interaction.options.getString('tags', true);
 
-  // Validate URL
   const validation = MediaService.validateMediaUrl(url);
   if (!validation.valid || !validation.type) {
     await interaction.reply({
@@ -17,7 +15,6 @@ export async function handleStoreCommand(interaction: ChatInputCommandInteractio
     return;
   }
 
-  // Normalize tags
   const tags = TagService.normalizeTags(tagsInput);
   if (tags.length === 0) {
     await interaction.reply({
@@ -28,7 +25,6 @@ export async function handleStoreCommand(interaction: ChatInputCommandInteractio
   }
 
   try {
-    // Store media in database
     const media = await MediaService.storeMedia({
       mediaUrl: url,
       mediaType: validation.type,
@@ -37,7 +33,6 @@ export async function handleStoreCommand(interaction: ChatInputCommandInteractio
       userId: interaction.user.id,
     });
 
-    // Create confirmation embed
     const embed = new EmbedBuilder()
       .setColor(Colors.Green)
       .setTitle('✅ Saved Successfully')

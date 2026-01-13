@@ -23,14 +23,9 @@ export interface MediaRecord {
 }
 
 export class MediaService {
-  /**
-   * Validate a media URL and detect media type
-   * Returns { valid: boolean, type: 'image' | 'gif' | 'video' | null }
-   */
   static validateMediaUrl(url: string): { valid: boolean; type: string | null } {
     const lowerUrl = url.toLowerCase();
 
-    // Check for image extensions
     const imageExts = ['.png', '.jpg', '.jpeg', '.webp'];
     const gifExt = '.gif';
     const videoExts = ['.mp4', '.mov', '.webm'];
@@ -50,9 +45,6 @@ export class MediaService {
     return { valid: false, type: null };
   }
 
-  /**
-   * Store a new media entry in the database
-   */
   static async storeMedia(data: MediaData): Promise<MediaRecord> {
     const media = await prisma.media.create({
       data: {
@@ -68,9 +60,6 @@ export class MediaService {
     return this.parseMediaRecord(media);
   }
 
-  /**
-   * Get a single media entry by ID (excludes soft-deleted)
-   */
   static async getMediaById(id: string): Promise<MediaRecord | null> {
     const media = await prisma.media.findFirst({
       where: {
@@ -86,10 +75,6 @@ export class MediaService {
     return this.parseMediaRecord(media);
   }
 
-  /**
-   * Soft delete a media entry with permission check
-   * Returns true if deleted, false if not found or no permission
-   */
   static async deleteMedia(id: string, userId: string, isAdmin: boolean): Promise<boolean> {
     const media = await prisma.media.findFirst({
       where: {
@@ -102,7 +87,6 @@ export class MediaService {
       return false;
     }
 
-    // Check permissions: user must be owner OR admin
     if (media.userId !== userId && !isAdmin) {
       return false;
     }
@@ -115,9 +99,6 @@ export class MediaService {
     return true;
   }
 
-  /**
-   * Increment recall count for a media entry
-   */
   static async incrementRecallCount(id: string): Promise<void> {
     await prisma.media.update({
       where: { id },
@@ -129,9 +110,6 @@ export class MediaService {
     });
   }
 
-  /**
-   * Parse a database media record
-   */
   private static parseMediaRecord(media: {
     id: string;
     mediaUrl: string;

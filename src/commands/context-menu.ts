@@ -17,16 +17,14 @@ import { SearchService } from '../services/search.service.js';
 import { replyTargets, recallSessions } from './recall.js';
 import { createMediaEmbed, createNavigationButtons } from '../utils/embeds.js';
 
-// Store media URLs temporarily for select menu interactions
 const mediaSelectionCache = new Map<string, Array<{ url: string; type: string; label: string }>>();
 
 export async function handleContextMenuCommand(interaction: MessageContextMenuCommandInteraction) {
   const message = interaction.targetMessage;
 
-  // Extract ALL media from message
   const mediaItems: Array<{ url: string; type: string; label: string }> = [];
 
-  // Check attachments
+
   let attachmentIndex = 1;
   for (const attachment of message.attachments.values()) {
     const validation = MediaService.validateMediaUrl(attachment.url);
@@ -41,7 +39,6 @@ export async function handleContextMenuCommand(interaction: MessageContextMenuCo
     }
   }
 
-  // Check embeds
   let embedIndex = 1;
   for (const embed of message.embeds) {
     if (embed.image?.url) {
@@ -77,7 +74,6 @@ export async function handleContextMenuCommand(interaction: MessageContextMenuCo
     embedIndex++;
   }
 
-  // If no media found, show error
   if (mediaItems.length === 0) {
     await interaction.reply({
       content: '❌ Nothing found. Please try a message with an image, GIF, or video.',
@@ -86,7 +82,6 @@ export async function handleContextMenuCommand(interaction: MessageContextMenuCo
     return;
   }
 
-  // If only 1 media item, show modal directly
   if (mediaItems.length === 1) {
     const modal = new ModalBuilder()
       .setCustomId(`save_media_${message.id}_0`)
@@ -103,7 +98,6 @@ export async function handleContextMenuCommand(interaction: MessageContextMenuCo
     const row = new ActionRowBuilder<TextInputBuilder>().addComponents(tagsInput);
     modal.addComponents(row);
 
-    // Store media URL for modal submit
     mediaSelectionCache.set(`${interaction.user.id}_${message.id}`, mediaItems);
 
     // Auto-cleanup after 15 minutes
@@ -115,7 +109,6 @@ export async function handleContextMenuCommand(interaction: MessageContextMenuCo
     return;
   }
 
-  // Multiple media items - show select menu
   const selectMenu = new StringSelectMenuBuilder()
     .setCustomId(`select_media_${message.id}`)
     .setPlaceholder('Choose which media to save')
@@ -134,7 +127,6 @@ export async function handleContextMenuCommand(interaction: MessageContextMenuCo
 
   const row = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(selectMenu);
 
-  // Store media items for later
   mediaSelectionCache.set(`${interaction.user.id}_${message.id}`, mediaItems);
 
   // Auto-cleanup after 15 minutes
@@ -149,14 +141,10 @@ export async function handleContextMenuCommand(interaction: MessageContextMenuCo
   });
 }
 
-/**
- * Handle select menu interaction when user chooses which media to save
- */
 export async function handleMediaSelectMenu(interaction: StringSelectMenuInteraction) {
   const messageId = interaction.customId.replace('select_media_', '');
   const selectedValue = interaction.values[0] || '0';
 
-  // Show modal for tag input
   const modal = new ModalBuilder()
     .setCustomId(`save_media_${messageId}_${selectedValue}`)
     .setTitle('Save Media to Tagger');
@@ -176,12 +164,10 @@ export async function handleMediaSelectMenu(interaction: StringSelectMenuInterac
 }
 
 export async function handleModalSubmit(interaction: ModalSubmitInteraction) {
-  // Extract message ID and media selection from custom ID
   const parts = interaction.customId.replace('save_media_', '').split('_');
   const messageId = parts[0] || '';
   const selectionValue = parts[1] || '0';
 
-  // Get tags from modal
   const tagsInput = interaction.fields.getTextInputValue('tags');
   const tags = TagService.normalizeTags(tagsInput);
 
@@ -194,7 +180,6 @@ export async function handleModalSubmit(interaction: ModalSubmitInteraction) {
   }
 
   try {
-    // Get media from cache
     const cacheKey = `${interaction.user.id}_${messageId}`;
     const mediaItems = mediaSelectionCache.get(cacheKey);
 
@@ -206,9 +191,7 @@ export async function handleModalSubmit(interaction: ModalSubmitInteraction) {
       return;
     }
 
-    // Check if saving all or single item
     if (selectionValue === 'all') {
-      // Save all media items with the same tags
       const savedMedia = [];
 
       for (const item of mediaItems) {
@@ -222,7 +205,6 @@ export async function handleModalSubmit(interaction: ModalSubmitInteraction) {
         savedMedia.push(media);
       }
 
-      // Create confirmation embed
       const embed = new EmbedBuilder()
         .setColor(Colors.Green)
         .setTitle(`✅ Saved ${savedMedia.length} Items`)
@@ -234,7 +216,6 @@ export async function handleModalSubmit(interaction: ModalSubmitInteraction) {
 
       await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
     } else {
-      // Save single item
       const mediaIndex = parseInt(selectionValue);
 
       if (mediaIndex >= mediaItems.length) {
@@ -257,7 +238,6 @@ export async function handleModalSubmit(interaction: ModalSubmitInteraction) {
       const mediaUrl = selectedMedia.url;
       const mediaType = selectedMedia.type;
 
-      // Save media to database
       const media = await MediaService.storeMedia({
         mediaUrl,
         mediaType,
@@ -266,7 +246,6 @@ export async function handleModalSubmit(interaction: ModalSubmitInteraction) {
         userId: interaction.user.id,
       });
 
-      // Create confirmation embed
       const embed = new EmbedBuilder()
         .setColor(Colors.Green)
         .setTitle('✅ Saved Successfully')
@@ -281,7 +260,6 @@ export async function handleModalSubmit(interaction: ModalSubmitInteraction) {
       await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
     }
 
-    // Clean up cache after successful save
     mediaSelectionCache.delete(cacheKey);
   } catch (error) {
     console.error('Error saving media from context menu:', error);
@@ -292,13 +270,9 @@ export async function handleModalSubmit(interaction: ModalSubmitInteraction) {
   }
 }
 
-/**
- * Handle "Reply with Tagger" context menu command
- */
 export async function handleReplyContextMenu(interaction: MessageContextMenuCommandInteraction) {
   const targetMessage = interaction.targetMessage;
 
-  // Show modal for tag input
   const modal = new ModalBuilder()
     .setCustomId(`reply_media_${targetMessage.id}`)
     .setTitle('Reply with Tagger');
@@ -317,14 +291,8 @@ export async function handleReplyContextMenu(interaction: MessageContextMenuComm
   await interaction.showModal(modal);
 }
 
-/**
- * Handle modal submit for "Reply with Tagger"
- */
 export async function handleReplyModalSubmit(interaction: ModalSubmitInteraction) {
-  // Extract message ID from custom ID
   const messageId = interaction.customId.replace('reply_media_', '');
-
-  // Get tags from modal
   const tagsInput = interaction.fields.getTextInputValue('tags');
   const tags = TagService.normalizeTags(tagsInput);
 
@@ -337,7 +305,6 @@ export async function handleReplyModalSubmit(interaction: ModalSubmitInteraction
   }
 
   try {
-    // Search for media
     const results = await SearchService.searchByTags(
       interaction.guildId!,
       tags
@@ -351,16 +318,13 @@ export async function handleReplyModalSubmit(interaction: ModalSubmitInteraction
       return;
     }
 
-    // Store reply target
     replyTargets.set(interaction.user.id, {
       channelId: interaction.channelId!,
       messageId: messageId,
     });
 
-    // Store recall session
     recallSessions.set(interaction.user.id, results);
 
-    // Show first result with carousel
     const embed = createMediaEmbed(results[0]!, 1, results.length);
     const buttons = createNavigationButtons(1, results.length, 'recall', results[0]!.id);
 

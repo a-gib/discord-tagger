@@ -1,7 +1,6 @@
 import { REST, Routes, SlashCommandBuilder, ContextMenuCommandBuilder, ApplicationCommandType } from 'discord.js';
 import dotenv from 'dotenv';
 
-// Load environment variables
 dotenv.config();
 
 const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
@@ -12,11 +11,9 @@ if (!DISCORD_TOKEN || !DISCORD_CLIENT_ID) {
   process.exit(1);
 }
 
-// Type assertions after validation
 const token: string = DISCORD_TOKEN;
 const clientId: string = DISCORD_CLIENT_ID;
 
-// Define slash commands
 const commands = [
   new SlashCommandBuilder()
     .setName('save')
@@ -95,7 +92,6 @@ const commands = [
     .setName('help')
     .setDescription('Explain how to use Tagger'),
 
-  // Context menu commands
   new ContextMenuCommandBuilder()
     .setName('Save to Tagger')
     .setType(ApplicationCommandType.Message),
@@ -109,14 +105,12 @@ const commands = [
     .setType(ApplicationCommandType.Message),
 ].map((command) => command.toJSON());
 
-// Create REST client and deploy commands
 const rest = new REST({ version: '10' }).setToken(token);
 
 async function deployCommands() {
   try {
     console.log(`🚀 Started refreshing ${commands.length} application (/) commands.`);
 
-    // Register commands globally
     const data = await rest.put(Routes.applicationCommands(clientId), {
       body: commands,
     });
