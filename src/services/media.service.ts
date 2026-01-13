@@ -62,11 +62,11 @@ export class MediaService {
         guildId: data.guildId,
         userId: data.userId,
         channelId: data.channelId,
-        messageId: data.messageId,
-        fileName: data.fileName,
-        fileSize: data.fileSize,
-        width: data.width,
-        height: data.height,
+        ...(data.messageId !== undefined && { messageId: data.messageId }),
+        ...(data.fileName !== undefined && { fileName: data.fileName }),
+        ...(data.fileSize !== undefined && { fileSize: data.fileSize }),
+        ...(data.width !== undefined && { width: data.width }),
+        ...(data.height !== undefined && { height: data.height }),
       },
     });
 
