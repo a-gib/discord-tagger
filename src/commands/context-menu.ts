@@ -44,7 +44,7 @@ export async function handleContextMenuCommand(interaction: MessageContextMenuCo
     const isGifProvider = embed.provider?.name === 'Tenor' || embed.provider?.name === 'GIPHY';
 
     if (isGifProvider) {
-      const directUrl = embed.video?.proxyURL || embed.video?.url || embed.image?.url;
+      const directUrl = embed.video?.url || embed.image?.url;
       if (directUrl) {
         mediaItems.push({
           url: directUrl,
