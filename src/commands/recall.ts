@@ -8,9 +8,11 @@ import {
   AttachmentBuilder,
 } from 'discord.js';
 import { SearchService } from '../services/search.service.js';
-import { TagService } from '../services/tag.service.js';
 import { MediaService } from '../services/media.service.js';
+import { validateTags } from '../utils/validation.js';
+import { handleNavigation } from '../utils/navigation.js';
 import { createMediaEmbed, createNavigationButtons } from '../utils/embeds.js';
+import { SESSION_TIMEOUT_MS } from '../constants.js';
 import type { MediaRecord } from '../services/media.service.js';
 
 export const recallSessions = new Map<string, MediaRecord[]>();
@@ -19,6 +21,104 @@ export const replyTargets = new Map<string, { channelId: string; messageId: stri
 function getExtension(url: string): string {
   const match = url.match(/\.(png|jpg|jpeg|gif|webp|mp4|mov|webm)/i);
   return match?.[1] || 'bin';
+}
+
+async function sendMedia(
+  interaction: ButtonInteraction,
+  media: MediaRecord,
+  userId: string,
+  replyTarget?: { channelId: string; messageId: string }
+): Promise<void> {
+  if (
+    !interaction.channel ||
+    interaction.channel.type === ChannelType.DM ||
+    interaction.channel.type === ChannelType.GroupDM ||
+    !('send' in interaction.channel)
+  ) {
+    await interaction.update({
+      content: '❌ Cannot send media to this channel type.',
+      embeds: [],
+      components: [],
+    });
+    return;
+  }
+
+  try {
+    const isDiscordCdn = media.mediaUrl.includes('cdn.discordapp.com') ||
+                        media.mediaUrl.includes('media.discordapp.net');
+
+    if (isDiscordCdn) {
+      const cleanUrl = media.mediaUrl.replace(/\\&/g, '&');
+      const response = await fetch(cleanUrl);
+      if (!response.ok) throw new Error('Failed to fetch media');
+
+      const buffer = Buffer.from(await response.arrayBuffer());
+      const filename = media.fileName || `media.${getExtension(media.mediaUrl)}`;
+      const attachment = new AttachmentBuilder(buffer, { name: filename });
+      const metadataText = `-# Sent by: <@${userId}>`;
+
+      if (replyTarget) {
+        const targetChannel = await interaction.client.channels.fetch(replyTarget.channelId);
+        if (targetChannel && 'messages' in targetChannel) {
+          const targetMessage = await targetChannel.messages.fetch(replyTarget.messageId);
+          await targetMessage.reply({
+            content: metadataText,
+            files: [attachment],
+            allowedMentions: { parse: [] },
+          });
+        }
+      } else {
+        await interaction.channel.send({
+          content: metadataText,
+          files: [attachment],
+          allowedMentions: { parse: [] },
+        });
+      }
+    } else {
+      const messageContent = `-# Sent by: <@${userId}> | [↗](${media.mediaUrl})`;
+
+      if (replyTarget) {
+        const targetChannel = await interaction.client.channels.fetch(replyTarget.channelId);
+        if (targetChannel && 'messages' in targetChannel) {
+          const targetMessage = await targetChannel.messages.fetch(replyTarget.messageId);
+          await targetMessage.reply({
+            content: messageContent,
+            allowedMentions: { parse: [] },
+          });
+        }
+      } else {
+        await interaction.channel.send({
+          content: messageContent,
+          allowedMentions: { parse: [] },
+        });
+      }
+    }
+
+    await MediaService.incrementRecallCount(media.id);
+
+    await interaction.update({
+      content: '✅ Sent!',
+      embeds: [],
+      components: [],
+    });
+  } catch (error: unknown) {
+    console.error('Error sending media:', error);
+    if (error && typeof error === 'object' && 'code' in error && error.code === 50001) {
+      await interaction.update({
+        content:
+          '❌ I don\'t have permission to send messages in this channel.\n' +
+          'Please give me the **Send Messages** permission in Server Settings → Roles.',
+        embeds: [],
+        components: [],
+      });
+    } else {
+      await interaction.update({
+        content: '❗ Failed to send. Please try again.',
+        embeds: [],
+        components: [],
+      });
+    }
+  }
 }
 
 export async function handleRecallCommand(interaction: ChatInputCommandInteraction) {
@@ -37,15 +137,8 @@ export async function handleRecallCommand(interaction: ChatInputCommandInteracti
 
   const tagsInput = interaction.options.getString('tags', true);
   const typeFilter = interaction.options.getString('type', false);
-  const searchTags = TagService.normalizeTags(tagsInput);
-
-  if (searchTags.length === 0) {
-    await interaction.reply({
-      content: '❌ No valid tags provided. Tags must be alphanumeric + underscore only.',
-      flags: MessageFlags.Ephemeral,
-    });
-    return;
-  }
+  const searchTags = await validateTags(interaction, tagsInput);
+  if (!searchTags) return;
 
   try {
     const results = await SearchService.searchByTags(
@@ -63,7 +156,13 @@ export async function handleRecallCommand(interaction: ChatInputCommandInteracti
       return;
     }
 
-    recallSessions.set(interaction.user.id, results);
+    const userId = interaction.user.id;
+    recallSessions.set(userId, results);
+
+    // Auto-cleanup after timeout
+    setTimeout(() => {
+      recallSessions.delete(userId);
+    }, SESSION_TIMEOUT_MS);
 
     const embed = createMediaEmbed(results[0]!, 1, results.length);
     const buttons = createNavigationButtons(1, results.length, 'recall', results[0]!.id);
@@ -96,6 +195,8 @@ export async function handleRecallButton(interaction: ButtonInteraction) {
   }
 
   const [_mode, action, mediaId] = interaction.customId.split('_');
+  if (!action || !mediaId) return;
+
   const currentIndex = results.findIndex((m) => m.id === mediaId);
   if (currentIndex === -1) {
     await interaction.reply({
@@ -108,122 +209,13 @@ export async function handleRecallButton(interaction: ButtonInteraction) {
   if (action === 'send') {
     const media = results[currentIndex]!;
     const replyTarget = replyTargets.get(userId);
-    if (
-      interaction.channel &&
-      interaction.channel.type !== ChannelType.DM &&
-      interaction.channel.type !== ChannelType.GroupDM &&
-      'send' in interaction.channel
-    ) {
-      try {
-        const isDiscordCdn = media.mediaUrl.includes('cdn.discordapp.com') ||
-                            media.mediaUrl.includes('media.discordapp.net');
-
-        if (isDiscordCdn) {
-          const cleanUrl = media.mediaUrl.replace(/\\&/g, '&');
-          const response = await fetch(cleanUrl);
-          if (!response.ok) throw new Error('Failed to fetch media');
-
-          const buffer = Buffer.from(await response.arrayBuffer());
-          const filename = media.fileName || `media.${getExtension(media.mediaUrl)}`;
-          const attachment = new AttachmentBuilder(buffer, { name: filename });
-          const metadataText = `-# Sent by: <@${userId}> | Tags: ${media.tags.join(', ')}`;
-
-          if (replyTarget) {
-            const targetChannel = await interaction.client.channels.fetch(replyTarget.channelId);
-            if (targetChannel && 'messages' in targetChannel) {
-              const targetMessage = await targetChannel.messages.fetch(replyTarget.messageId);
-              await targetMessage.reply({
-                content: metadataText,
-                files: [attachment],
-                allowedMentions: { parse: [] },
-              });
-            }
-          } else {
-            await interaction.channel.send({
-              content: metadataText,
-              files: [attachment],
-              allowedMentions: { parse: [] },
-            });
-          }
-        } else {
-          const messageContent = `-# Sent by: <@${userId}> | Tags: ${media.tags.join(', ')} | [↗](${media.mediaUrl})`;
-
-          if (replyTarget) {
-            const targetChannel = await interaction.client.channels.fetch(replyTarget.channelId);
-            if (targetChannel && 'messages' in targetChannel) {
-              const targetMessage = await targetChannel.messages.fetch(replyTarget.messageId);
-              await targetMessage.reply({
-                content: messageContent,
-                allowedMentions: { parse: [] },
-              });
-            }
-          } else {
-            await interaction.channel.send({
-              content: messageContent,
-              allowedMentions: { parse: [] },
-            });
-          }
-        }
-
-        await MediaService.incrementRecallCount(media.id);
-
-        await interaction.update({
-          content: '✅ Sent!',
-          embeds: [],
-          components: [],
-        });
-
-        recallSessions.delete(userId);
-        replyTargets.delete(userId);
-        return;
-      } catch (error: unknown) {
-        console.error('Error sending media:', error);
-        if (error && typeof error === 'object' && 'code' in error && error.code === 50001) {
-          await interaction.update({
-            content:
-              '❌ I don\'t have permission to send messages in this channel.\n' +
-              'Please give me the **Send Messages** permission in Server Settings → Roles.',
-            embeds: [],
-            components: [],
-          });
-        } else {
-          await interaction.update({
-            content: '❗ Failed to send. Please try again.',
-            embeds: [],
-            components: [],
-          });
-        }
-        recallSessions.delete(userId);
-        replyTargets.delete(userId);
-        return;
-      }
-    } else {
-      await interaction.update({
-        content: '❌ Cannot send media to this channel type.',
-        embeds: [],
-        components: [],
-      });
-      return;
-    }
+    await sendMedia(interaction, media, userId, replyTarget);
+    recallSessions.delete(userId);
+    replyTargets.delete(userId);
+    return;
   }
 
-  let newIndex = currentIndex;
-  if (action === 'prev') {
-    newIndex = Math.max(0, currentIndex - 1);
-  } else if (action === 'next') {
-    newIndex = Math.min(results.length - 1, currentIndex + 1);
-  }
-
-  const media = results[newIndex]!;
-  const position = newIndex + 1;
-
-  const embed = createMediaEmbed(media, position, results.length);
-  const buttons = createNavigationButtons(position, results.length, 'recall', media.id);
-
-  await interaction.update({
-    embeds: [embed],
-    components: [buttons],
-  });
+  await handleNavigation(interaction, results, action, mediaId, 'recall');
 }
 
 export async function handleDeleteStashMessage(interaction: MessageContextMenuCommandInteraction) {

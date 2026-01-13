@@ -4,7 +4,11 @@ import {
   ButtonBuilder,
   ButtonStyle,
   Colors,
+  ModalBuilder,
+  TextInputBuilder,
+  TextInputStyle,
 } from 'discord.js';
+import { TAG_INPUT_MAX_LENGTH } from '../constants.js';
 import type { MediaRecord } from '../services/media.service.js';
 
 export function createMediaEmbed(
@@ -29,9 +33,13 @@ export function createMediaEmbed(
       { name: 'Uses', value: `${media.recallCount}`, inline: true },
       { name: 'Result', value: `${position} of ${total}`, inline: true }
     )
-    .setFooter({ text: `ID: ${media.id}` })
     .setTimestamp(media.createdAt)
     .setImage(media.thumbnailUrl || media.mediaUrl);
+
+  // Only show ID when debug mode is enabled
+  if (process.env.DEBUG_MODE === 'true') {
+    embed.setFooter({ text: `ID: ${media.id}` });
+  }
 
   if (media.fileName) {
     embed.setDescription(`📁 ${media.fileName}`);
@@ -81,6 +89,25 @@ export function createNavigationButtons(
   }
 
   return row;
+}
+
+export function createTagsModal(customId: string, title: string): ModalBuilder {
+  const modal = new ModalBuilder()
+    .setCustomId(customId)
+    .setTitle(title);
+
+  const tagsInput = new TextInputBuilder()
+    .setCustomId('tags')
+    .setLabel('Tags (space or comma separated)')
+    .setStyle(TextInputStyle.Short)
+    .setPlaceholder('e.g., plumber guh')
+    .setRequired(true)
+    .setMaxLength(TAG_INPUT_MAX_LENGTH);
+
+  const row = new ActionRowBuilder<TextInputBuilder>().addComponents(tagsInput);
+  modal.addComponents(row);
+
+  return modal;
 }
 
 export function createHelpEmbed(): EmbedBuilder {

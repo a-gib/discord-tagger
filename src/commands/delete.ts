@@ -6,8 +6,10 @@ import {
 } from 'discord.js';
 import { SearchService } from '../services/search.service.js';
 import { MediaService } from '../services/media.service.js';
-import { TagService } from '../services/tag.service.js';
+import { validateTags } from '../utils/validation.js';
+import { handleNavigation } from '../utils/navigation.js';
 import { createMediaEmbed, createNavigationButtons } from '../utils/embeds.js';
+import { SESSION_TIMEOUT_MS } from '../constants.js';
 import type { MediaRecord } from '../services/media.service.js';
 
 export const deleteSessions = new Map<string, MediaRecord[]>();
@@ -15,15 +17,8 @@ export const deleteSessions = new Map<string, MediaRecord[]>();
 export async function handleDeleteCommand(interaction: ChatInputCommandInteraction) {
   const tagsInput = interaction.options.getString('tags', true);
   const typeFilter = interaction.options.getString('type', false);
-  const searchTags = TagService.normalizeTags(tagsInput);
-
-  if (searchTags.length === 0) {
-    await interaction.reply({
-      content: '❌ No valid tags provided. Tags must be alphanumeric + underscore only.',
-      flags: MessageFlags.Ephemeral,
-    });
-    return;
-  }
+  const searchTags = await validateTags(interaction, tagsInput);
+  if (!searchTags) return;
 
   try {
     const results = await SearchService.searchByTags(
@@ -41,7 +36,13 @@ export async function handleDeleteCommand(interaction: ChatInputCommandInteracti
       return;
     }
 
-    deleteSessions.set(interaction.user.id, results);
+    const userId = interaction.user.id;
+    deleteSessions.set(userId, results);
+
+    // Auto-cleanup after timeout
+    setTimeout(() => {
+      deleteSessions.delete(userId);
+    }, SESSION_TIMEOUT_MS);
 
     const embed = createMediaEmbed(results[0]!, 1, results.length);
     const buttons = createNavigationButtons(1, results.length, 'delete', results[0]!.id);
@@ -74,6 +75,8 @@ export async function handleDeleteButton(interaction: ButtonInteraction) {
   }
 
   const [_mode, action, mediaId] = interaction.customId.split('_');
+  if (!action || !mediaId) return;
+
   const currentIndex = results.findIndex((m) => m.id === mediaId);
   if (currentIndex === -1) {
     await interaction.reply({
@@ -127,21 +130,5 @@ export async function handleDeleteButton(interaction: ButtonInteraction) {
     return;
   }
 
-  let newIndex = currentIndex;
-  if (action === 'prev') {
-    newIndex = Math.max(0, currentIndex - 1);
-  } else if (action === 'next') {
-    newIndex = Math.min(results.length - 1, currentIndex + 1);
-  }
-
-  const media = results[newIndex]!;
-  const position = newIndex + 1;
-
-  const embed = createMediaEmbed(media, position, results.length);
-  const buttons = createNavigationButtons(position, results.length, 'delete', media.id);
-
-  await interaction.update({
-    embeds: [embed],
-    components: [buttons],
-  });
+  await handleNavigation(interaction, results, action, mediaId, 'delete');
 }

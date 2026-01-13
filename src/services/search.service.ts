@@ -1,5 +1,5 @@
 import prisma from '../utils/db.js';
-import type { MediaRecord } from './media.service.js';
+import { MediaService, type MediaRecord } from './media.service.js';
 
 interface ScoredMedia {
   media: MediaRecord;
@@ -26,20 +26,7 @@ export class SearchService {
       .map((media): ScoredMedia => {
         const mediaTags = media.tags;
         const matchedTags = searchTags.filter((tag) => mediaTags.includes(tag));
-
-        const mediaRecord: MediaRecord = {
-          id: media.id,
-          mediaUrl: media.mediaUrl,
-          mediaType: media.mediaType,
-          tags: mediaTags,
-          guildId: media.guildId,
-          userId: media.userId,
-          ...(media.fileName !== null && { fileName: media.fileName }),
-          ...(media.thumbnailUrl !== null && { thumbnailUrl: media.thumbnailUrl }),
-          recallCount: media.recallCount,
-          createdAt: media.createdAt,
-          deletedAt: media.deletedAt,
-        };
+        const mediaRecord = MediaService.parseMediaRecord(media);
 
         return {
           media: mediaRecord,
@@ -76,18 +63,6 @@ export class SearchService {
       ],
     });
 
-    return allMedia.map((media) => ({
-      id: media.id,
-      mediaUrl: media.mediaUrl,
-      mediaType: media.mediaType,
-      tags: media.tags,
-      guildId: media.guildId,
-      userId: media.userId,
-      ...(media.fileName !== null && { fileName: media.fileName }),
-      ...(media.thumbnailUrl !== null && { thumbnailUrl: media.thumbnailUrl }),
-      recallCount: media.recallCount,
-      createdAt: media.createdAt,
-      deletedAt: media.deletedAt,
-    }));
+    return allMedia.map((media) => MediaService.parseMediaRecord(media));
   }
 }

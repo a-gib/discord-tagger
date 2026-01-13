@@ -9,12 +9,19 @@ import { recallSessions, replyTargets } from './recall.js';
 import { deleteSessions } from './delete.js';
 import { topSessions } from './top.js';
 import { MediaService } from '../services/media.service.js';
-
-export const BOT_OWNER_ID = '358767796013891613';
+import { BOT_OWNER_ID } from '../constants.js';
 
 const startTime = Date.now();
 
 export async function handleDebugCommand(interaction: ChatInputCommandInteraction) {
+  if (!BOT_OWNER_ID) {
+    await interaction.reply({
+      content: '❌ Debug command is disabled (BOT_OWNER_ID not configured).',
+      flags: MessageFlags.Ephemeral,
+    });
+    return;
+  }
+
   if (interaction.user.id !== BOT_OWNER_ID) {
     await interaction.reply({
       content: '❌ Owner only.',

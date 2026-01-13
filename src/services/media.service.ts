@@ -1,4 +1,5 @@
 import prisma from '../utils/db.js';
+import { IMAGE_EXTENSIONS, GIF_EXTENSION, VIDEO_EXTENSIONS } from '../constants.js';
 
 export interface MediaData {
   mediaUrl: string;
@@ -28,23 +29,19 @@ export class MediaService {
   static validateMediaUrl(url: string): { valid: boolean; type: string | null } {
     const lowerUrl = url.toLowerCase();
 
-    const imageExts = ['.png', '.jpg', '.jpeg', '.webp'];
-    const gifExt = '.gif';
-    const videoExts = ['.mp4', '.mov', '.webm'];
-
     if (lowerUrl.includes('tenor.com/view/') || lowerUrl.includes('giphy.com/gifs/')) {
       return { valid: true, type: 'gif' };
     }
 
-    if (imageExts.some((ext) => lowerUrl.includes(ext))) {
+    if (IMAGE_EXTENSIONS.some((ext) => lowerUrl.includes(ext))) {
       return { valid: true, type: 'image' };
     }
 
-    if (lowerUrl.includes(gifExt)) {
+    if (lowerUrl.includes(GIF_EXTENSION)) {
       return { valid: true, type: 'gif' };
     }
 
-    if (videoExts.some((ext) => lowerUrl.includes(ext))) {
+    if (VIDEO_EXTENSIONS.some((ext) => lowerUrl.includes(ext))) {
       return { valid: true, type: 'video' };
     }
 
@@ -131,7 +128,7 @@ export class MediaService {
     return result.count;
   }
 
-  private static parseMediaRecord(media: {
+  static parseMediaRecord(media: {
     id: string;
     mediaUrl: string;
     mediaType: string;

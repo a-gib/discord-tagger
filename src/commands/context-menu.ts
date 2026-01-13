@@ -1,21 +1,19 @@
 import {
   MessageContextMenuCommandInteraction,
-  ModalBuilder,
-  TextInputBuilder,
-  TextInputStyle,
-  ActionRowBuilder,
   ModalSubmitInteraction,
   EmbedBuilder,
   Colors,
   MessageFlags,
   StringSelectMenuBuilder,
   StringSelectMenuInteraction,
+  ActionRowBuilder,
 } from 'discord.js';
 import { MediaService } from '../services/media.service.js';
-import { TagService } from '../services/tag.service.js';
 import { SearchService } from '../services/search.service.js';
+import { validateTags } from '../utils/validation.js';
 import { replyTargets, recallSessions } from './recall.js';
-import { createMediaEmbed, createNavigationButtons } from '../utils/embeds.js';
+import { createMediaEmbed, createNavigationButtons, createTagsModal } from '../utils/embeds.js';
+import { SESSION_TIMEOUT_MS } from '../constants.js';
 
 const mediaSelectionCache = new Map<string, Array<{ url: string; type: string; label: string; thumbnailUrl?: string }>>();
 
@@ -96,27 +94,13 @@ export async function handleContextMenuCommand(interaction: MessageContextMenuCo
   }
 
   if (mediaItems.length === 1) {
-    const modal = new ModalBuilder()
-      .setCustomId(`save_media_${message.id}_0`)
-      .setTitle('Save Media to Stash');
-
-    const tagsInput = new TextInputBuilder()
-      .setCustomId('tags')
-      .setLabel('Tags (space or comma separated)')
-      .setStyle(TextInputStyle.Short)
-      .setPlaceholder('e.g., plumber guh')
-      .setRequired(true)
-      .setMaxLength(500);
-
-    const row = new ActionRowBuilder<TextInputBuilder>().addComponents(tagsInput);
-    modal.addComponents(row);
-
+    const modal = createTagsModal(`save_media_${message.id}_0`, 'Save Media to Stash');
     mediaSelectionCache.set(`${interaction.user.id}_${message.id}`, mediaItems);
 
     // Auto-cleanup after 15 minutes
     setTimeout(() => {
       mediaSelectionCache.delete(`${interaction.user.id}_${message.id}`);
-    }, 15 * 60 * 1000);
+    }, SESSION_TIMEOUT_MS);
 
     await interaction.showModal(modal);
     return;
@@ -145,7 +129,7 @@ export async function handleContextMenuCommand(interaction: MessageContextMenuCo
   // Auto-cleanup after 15 minutes
   setTimeout(() => {
     mediaSelectionCache.delete(`${interaction.user.id}_${message.id}`);
-  }, 15 * 60 * 1000);
+  }, SESSION_TIMEOUT_MS);
 
   await interaction.reply({
     content: `📎 This message has ${mediaItems.length} items. Choose which one to save:`,
@@ -158,21 +142,7 @@ export async function handleMediaSelectMenu(interaction: StringSelectMenuInterac
   const messageId = interaction.customId.replace('select_media_', '');
   const selectedValue = interaction.values[0] || '0';
 
-  const modal = new ModalBuilder()
-    .setCustomId(`save_media_${messageId}_${selectedValue}`)
-    .setTitle('Save Media to Stash');
-
-  const tagsInput = new TextInputBuilder()
-    .setCustomId('tags')
-    .setLabel('Tags (space or comma separated)')
-    .setStyle(TextInputStyle.Short)
-    .setPlaceholder('e.g., plumber guh')
-    .setRequired(true)
-    .setMaxLength(500);
-
-  const row = new ActionRowBuilder<TextInputBuilder>().addComponents(tagsInput);
-  modal.addComponents(row);
-
+  const modal = createTagsModal(`save_media_${messageId}_${selectedValue}`, 'Save Media to Stash');
   await interaction.showModal(modal);
 }
 
@@ -182,15 +152,8 @@ export async function handleModalSubmit(interaction: ModalSubmitInteraction) {
   const selectionValue = parts[1] || '0';
 
   const tagsInput = interaction.fields.getTextInputValue('tags');
-  const tags = TagService.normalizeTags(tagsInput);
-
-  if (tags.length === 0) {
-    await interaction.reply({
-      content: '❌ No valid tags provided. Tags must be alphanumeric + underscore only.',
-      flags: MessageFlags.Ephemeral,
-    });
-    return;
-  }
+  const tags = await validateTags(interaction, tagsInput);
+  if (!tags) return;
 
   try {
     const cacheKey = `${interaction.user.id}_${messageId}`;
@@ -268,9 +231,13 @@ export async function handleModalSubmit(interaction: ModalSubmitInteraction) {
           { name: 'Type', value: mediaType, inline: true },
           { name: 'Tags', value: tags.join(', '), inline: false }
         )
-        .setFooter({ text: `ID: ${media.id}` })
         .setTimestamp()
         .setImage(media.thumbnailUrl || mediaUrl);
+
+      // Only show ID when debug mode is enabled
+      if (process.env.DEBUG_MODE === 'true') {
+        embed.setFooter({ text: `ID: ${media.id}` });
+      }
 
       await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
     }
@@ -286,36 +253,15 @@ export async function handleModalSubmit(interaction: ModalSubmitInteraction) {
 export async function handleReplyContextMenu(interaction: MessageContextMenuCommandInteraction) {
   const targetMessage = interaction.targetMessage;
 
-  const modal = new ModalBuilder()
-    .setCustomId(`reply_media_${targetMessage.id}`)
-    .setTitle('Reply with Stash');
-
-  const tagsInput = new TextInputBuilder()
-    .setCustomId('tags')
-    .setLabel('Tags (space or comma separated)')
-    .setStyle(TextInputStyle.Short)
-    .setPlaceholder('e.g., plumber guh')
-    .setRequired(true)
-    .setMaxLength(500);
-
-  const row = new ActionRowBuilder<TextInputBuilder>().addComponents(tagsInput);
-  modal.addComponents(row);
-
+  const modal = createTagsModal(`reply_media_${targetMessage.id}`, 'Reply with Stash');
   await interaction.showModal(modal);
 }
 
 export async function handleReplyModalSubmit(interaction: ModalSubmitInteraction) {
   const messageId = interaction.customId.replace('reply_media_', '');
   const tagsInput = interaction.fields.getTextInputValue('tags');
-  const tags = TagService.normalizeTags(tagsInput);
-
-  if (tags.length === 0) {
-    await interaction.reply({
-      content: '❌ No valid tags provided. Tags must be alphanumeric + underscore only.',
-      flags: MessageFlags.Ephemeral,
-    });
-    return;
-  }
+  const tags = await validateTags(interaction, tagsInput);
+  if (!tags) return;
 
   try {
     const results = await SearchService.searchByTags(

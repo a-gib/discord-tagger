@@ -1,6 +1,6 @@
 import { ChatInputCommandInteraction, EmbedBuilder, Colors, MessageFlags } from 'discord.js';
 import { MediaService } from '../services/media.service.js';
-import { TagService } from '../services/tag.service.js';
+import { validateTags } from '../utils/validation.js';
 
 export async function handleStoreCommand(interaction: ChatInputCommandInteraction) {
   const url = interaction.options.getString('url', true);
@@ -15,14 +15,8 @@ export async function handleStoreCommand(interaction: ChatInputCommandInteractio
     return;
   }
 
-  const tags = TagService.normalizeTags(tagsInput);
-  if (tags.length === 0) {
-    await interaction.reply({
-      content: '❌ No valid tags provided. Tags must be alphanumeric + underscore only.',
-      flags: MessageFlags.Ephemeral,
-    });
-    return;
-  }
+  const tags = await validateTags(interaction, tagsInput);
+  if (!tags) return;
 
   try {
     const media = await MediaService.storeMedia({
@@ -40,9 +34,13 @@ export async function handleStoreCommand(interaction: ChatInputCommandInteractio
         { name: 'Type', value: validation.type, inline: true },
         { name: 'Tags', value: tags.join(', '), inline: false }
       )
-      .setFooter({ text: `ID: ${media.id}` })
       .setTimestamp()
       .setImage(url);
+
+    // Only show ID when debug mode is enabled
+    if (process.env.DEBUG_MODE === 'true') {
+      embed.setFooter({ text: `ID: ${media.id}` });
+    }
 
     await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
   } catch (error) {
