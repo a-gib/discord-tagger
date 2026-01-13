@@ -145,7 +145,7 @@ export async function handleRecallButton(interaction: ButtonInteraction) {
             });
           }
         } else {
-          const messageContent = `-# Sent by: <@${userId}> | Tags: ${media.tags.join(', ')}\n${media.mediaUrl}`;
+          const messageContent = `-# Sent by: <@${userId}> | Tags: ${media.tags.join(', ')} | [↗](${media.mediaUrl})`;
 
           if (replyTarget) {
             const targetChannel = await interaction.client.channels.fetch(replyTarget.channelId);
