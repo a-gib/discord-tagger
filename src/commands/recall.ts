@@ -37,8 +37,12 @@ async function sendMedia(
   userId: string,
   replyTarget?: { channelId: string; messageId: string }
 ): Promise<void> {
-  if (!interaction.channel || !interaction.channel.isTextBased()) {
-    console.error(`Cannot send media: Invalid channel - channelId: ${interaction.channelId}, type: ${interaction.channel?.type}, isTextBased: ${interaction.channel?.isTextBased()}, user: ${userId}, guild: ${interaction.guildId}`);
+  const channel = interaction.channel;
+  const channelType = channel?.type;
+  const isTextBased = channel?.isTextBased();
+
+  if (!channel || !channel.isTextBased()) {
+    console.error(`Cannot send media: Invalid channel - channelId: ${interaction.channelId}, type: ${channelType}, isTextBased: ${isTextBased}, user: ${userId}, guild: ${interaction.guildId}`);
     await interaction.update({
       content: '❌ Cannot send media to this channel type.',
       embeds: [],

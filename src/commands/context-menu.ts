@@ -94,7 +94,8 @@ export async function handleContextMenuCommand(interaction: MessageContextMenuCo
   }
 
   if (mediaItems.length === 0) {
-    console.warn(`No media found in message ${message.id} from user ${interaction.user.id} (guild: ${interaction.guildId}, attachments: ${message.attachments.size}, embeds: ${message.embeds.length}, embed types: [${message.embeds.map(e => e.type).join(', ')}])`);
+    const embedInfo = message.embeds.map(e => `${e.data.type || 'unknown'}`).join(', ');
+    console.warn(`No media found in message ${message.id} from user ${interaction.user.id} (guild: ${interaction.guildId}, attachments: ${message.attachments.size}, embeds: ${message.embeds.length}, embed types: [${embedInfo}])`);
     await interaction.reply({
       content: '❌ Nothing found. Please try a message with an image, GIF, or video.',
       flags: MessageFlags.Ephemeral,
