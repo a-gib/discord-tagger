@@ -46,12 +46,23 @@ const client = new Client({
 client.once('clientReady', () => {
   console.log(`✅ Bot is ready! Logged in as ${client.user?.tag}`);
   console.log(`📊 Currently in ${client.guilds.cache.size} server(s)`);
+  if (process.env.DEBUG_MODE === 'true') {
+    console.log('[DEBUG] Debug mode enabled');
+  }
 });
 
 client.on(Events.InteractionCreate, async (interaction) => {
   try {
     // Check if bot is allowed in this guild
     if (!isGuildAllowed(interaction.guildId)) {
+      const interactionType = interaction.isChatInputCommand()
+        ? `command:${interaction.commandName}`
+        : interaction.isButton()
+        ? 'button'
+        : interaction.isMessageContextMenuCommand()
+        ? `context-menu:${interaction.commandName}`
+        : 'other';
+      console.warn(`Unauthorized guild access attempt: guild ${interaction.guildId}, user ${interaction.user.id}, type: ${interactionType}`);
       if (interaction.isRepliable()) {
         await interaction.reply({
           content: '❌ This server is not authorized to use this bot.',

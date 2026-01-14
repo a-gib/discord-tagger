@@ -94,6 +94,7 @@ export async function handleContextMenuCommand(interaction: MessageContextMenuCo
   }
 
   if (mediaItems.length === 0) {
+    console.warn(`No media found in message ${message.id} from user ${interaction.user.id} (guild: ${interaction.guildId}, attachments: ${message.attachments.size}, embeds: ${message.embeds.length}, embed types: [${message.embeds.map(e => e.type).join(', ')}])`);
     await interaction.reply({
       content: '❌ Nothing found. Please try a message with an image, GIF, or video.',
       flags: MessageFlags.Ephemeral,
@@ -168,6 +169,7 @@ export async function handleModalSubmit(interaction: ModalSubmitInteraction) {
     const mediaItems = mediaSelectionCache.get(cacheKey);
 
     if (!mediaItems) {
+      console.warn(`Media selection session expired for user ${interaction.user.id}, message ${messageId} (guild: ${interaction.guildId}, selectionValue: ${selectionValue})`);
       await interaction.reply({
         content: '❗ Session expired. Please try again.',
         flags: MessageFlags.Ephemeral,
@@ -187,6 +189,10 @@ export async function handleModalSubmit(interaction: ModalSubmitInteraction) {
           userId: interaction.user.id,
         });
         savedMedia.push(media);
+      }
+
+      if (process.env.DEBUG_MODE === 'true') {
+        console.log(`[DEBUG] Bulk save: ${savedMedia.length} items by user ${interaction.user.id} with tags [${tags.join(', ')}]`);
       }
 
       const embed = new EmbedBuilder()

@@ -25,6 +25,7 @@ export async function validateTags(
   const tags = TagService.normalizeTags(tagsInput);
 
   if (tags.length === 0) {
+    console.warn(`Invalid tags submitted by user ${interaction.user.id} in guild ${interaction.guildId}: "${tagsInput}" (normalized to empty array)`);
     await interaction.reply({
       content: '❌ No valid tags provided. Tags must be alphanumeric + underscore only.',
       flags: MessageFlags.Ephemeral,

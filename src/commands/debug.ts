@@ -23,6 +23,7 @@ const startTime = Date.now();
 
 export async function handleDebugCommand(interaction: ChatInputCommandInteraction) {
   if (!BOT_OWNER_ID) {
+    console.warn(`Debug command attempted but BOT_OWNER_ID not configured (user: ${interaction.user.id}, guild: ${interaction.guildId})`);
     await interaction.reply({
       content: '❌ Debug command is disabled (BOT_OWNER_ID not configured).',
       flags: MessageFlags.Ephemeral,
@@ -31,6 +32,7 @@ export async function handleDebugCommand(interaction: ChatInputCommandInteractio
   }
 
   if (interaction.user.id !== BOT_OWNER_ID) {
+    console.warn(`Unauthorized debug command attempt by user ${interaction.user.id} (guild: ${interaction.guildId}, subcommand: ${interaction.options.getSubcommand()})`);
     await interaction.reply({
       content: '❌ Owner only.',
       flags: MessageFlags.Ephemeral,

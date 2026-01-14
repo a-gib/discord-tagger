@@ -75,6 +75,7 @@ export async function handleDeleteButton(interaction: ButtonInteraction) {
   const results = deleteSessions.get(userId);
 
   if (!results) {
+    console.warn(`Delete session expired for user ${userId} (guild: ${interaction.guildId}, customId: ${interaction.customId})`);
     await interaction.reply({
       content: '❗ Session expired. Please run /delete again.',
       flags: MessageFlags.Ephemeral,
@@ -87,6 +88,7 @@ export async function handleDeleteButton(interaction: ButtonInteraction) {
 
   const currentIndex = results.findIndex((m) => m.id === mediaId);
   if (currentIndex === -1) {
+    console.error(`Media ${mediaId} not found in delete session for user ${userId} (guild: ${interaction.guildId}, session has ${results.length} items, action: ${action})`);
     await interaction.reply({
       content: '❗ Not found in current session.',
       flags: MessageFlags.Ephemeral,
@@ -101,7 +103,12 @@ export async function handleDeleteButton(interaction: ButtonInteraction) {
     const media = results[currentIndex]!;
     const deleted = await MediaService.deleteMedia(media.id, userId, isAdmin);
 
+    if (process.env.DEBUG_MODE === 'true') {
+      console.log(`[DEBUG] Delete attempt: media ${media.id} by user ${userId} (isAdmin: ${isAdmin}, success: ${deleted})`);
+    }
+
     if (!deleted) {
+      console.warn(`User ${userId} attempted to delete media ${media.id} owned by ${media.userId} (isAdmin: ${isAdmin}, guild: ${interaction.guildId})`);
       await interaction.update({
         content: '❌ You can only delete your own items (unless you\'re a server admin).',
         embeds: [],

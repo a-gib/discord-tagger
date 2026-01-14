@@ -37,14 +37,20 @@ async function sendMedia(
   userId: string,
   replyTarget?: { channelId: string; messageId: string }
 ): Promise<void> {
-  if (
-    !interaction.channel ||
-    interaction.channel.type === ChannelType.DM ||
-    interaction.channel.type === ChannelType.GroupDM ||
-    !('send' in interaction.channel)
-  ) {
+  if (!interaction.channel || !interaction.channel.isTextBased()) {
+    console.error(`Cannot send media: Invalid channel - channelId: ${interaction.channelId}, type: ${interaction.channel?.type}, isTextBased: ${interaction.channel?.isTextBased()}, user: ${userId}, guild: ${interaction.guildId}`);
     await interaction.update({
       content: '❌ Cannot send media to this channel type.',
+      embeds: [],
+      components: [],
+    });
+    return;
+  }
+
+  if (interaction.channel.isDMBased()) {
+    console.warn(`Cannot send media: DM attempt by user ${userId}`);
+    await interaction.update({
+      content: '❌ Cannot send media in DMs.',
       embeds: [],
       components: [],
     });
@@ -135,6 +141,7 @@ export async function handleRecallCommand(interaction: ChatInputCommandInteracti
     const hasEmbedPermission = member?.permissionsIn(interaction.channel.id).has(PermissionFlagsBits.EmbedLinks) ?? false;
 
     if (!hasEmbedPermission) {
+      console.warn(`User ${interaction.user.id} lacks embed permission in channel ${interaction.channelId} (guild: ${interaction.guildId})`);
       await interaction.reply({
         content: '❌ You don\'t have permission to embed links in this channel.',
         flags: MessageFlags.Ephemeral,
@@ -154,6 +161,10 @@ export async function handleRecallCommand(interaction: ChatInputCommandInteracti
       searchTags,
       typeFilter || undefined
     );
+
+    if (process.env.DEBUG_MODE === 'true') {
+      console.log(`[DEBUG] Recall search: ${results.length} results for tags [${searchTags.join(', ')}] by user ${interaction.user.id}`);
+    }
 
     if (results.length === 0) {
       const filterMsg = typeFilter ? ` (type: ${typeFilter})` : '';
@@ -195,6 +206,7 @@ export async function handleRecallButton(interaction: ButtonInteraction) {
   const results = recallSessions.get(userId);
 
   if (!results) {
+    console.warn(`Recall session expired for user ${userId} (guild: ${interaction.guildId}, customId: ${interaction.customId})`);
     await interaction.reply({
       content: '❗ Session expired. Please run /get again.',
       flags: MessageFlags.Ephemeral,
@@ -207,6 +219,7 @@ export async function handleRecallButton(interaction: ButtonInteraction) {
 
   const currentIndex = results.findIndex((m) => m.id === mediaId);
   if (currentIndex === -1) {
+    console.error(`Media ${mediaId} not found in recall session for user ${userId} (guild: ${interaction.guildId}, session has ${results.length} items, action: ${action})`);
     await interaction.reply({
       content: '❗ Something went wrong.',
       flags: MessageFlags.Ephemeral,
@@ -217,6 +230,9 @@ export async function handleRecallButton(interaction: ButtonInteraction) {
   if (action === 'send') {
     const media = results[currentIndex]!;
     const replyTarget = replyTargets.get(userId);
+    if (process.env.DEBUG_MODE === 'true') {
+      console.log(`[DEBUG] Sending media ${media.id} by user ${userId}, isReply: ${!!replyTarget}`);
+    }
     await sendMedia(interaction, media, userId, replyTarget);
     recallSessions.delete(userId);
     replyTargets.delete(userId);
@@ -239,6 +255,7 @@ export async function handleDeleteStashMessage(interaction: MessageContextMenuCo
 
   const senderMatch = message.content.match(/-# Sent by: <@(\d+)>/);
   if (!senderMatch) {
+    console.error(`Could not parse sender from Stash message ${message.id} (guild: ${interaction.guildId}, content preview: "${message.content.substring(0, 100)}")`);
     await interaction.reply({
       content: '❗ Could not identify the sender.',
       flags: MessageFlags.Ephemeral,
@@ -252,6 +269,7 @@ export async function handleDeleteStashMessage(interaction: MessageContextMenuCo
     interaction.memberPermissions?.has(PermissionFlagsBits.ManageMessages);
 
   if (!hasPermission) {
+    console.warn(`User ${interaction.user.id} attempted to delete Stash message sent by ${senderId} (guild: ${interaction.guildId}, hasManageMessages: ${interaction.memberPermissions?.has(PermissionFlagsBits.ManageMessages)})`);
     await interaction.reply({
       content: '❌ Only the sender or moderators can delete this.',
       flags: MessageFlags.Ephemeral,

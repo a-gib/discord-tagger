@@ -66,6 +66,7 @@ export async function handleTopButton(interaction: ButtonInteraction) {
   const results = topSessions.get(messageId);
 
   if (!results) {
+    console.warn(`Top session expired for message ${messageId} (guild: ${interaction.guildId}, user: ${interaction.user.id}, customId: ${interaction.customId})`);
     await interaction.reply({
       content: '❗ Session expired. Please run /top again.',
       flags: MessageFlags.Ephemeral,
@@ -78,6 +79,7 @@ export async function handleTopButton(interaction: ButtonInteraction) {
 
   const currentIndex = results.findIndex((m) => m.id === mediaId);
   if (currentIndex === -1) {
+    console.error(`Media ${mediaId} not found in top session for message ${messageId} (guild: ${interaction.guildId}, session has ${results.length} items, action: ${action})`);
     await interaction.reply({
       content: '❗ Something went wrong.',
       flags: MessageFlags.Ephemeral,

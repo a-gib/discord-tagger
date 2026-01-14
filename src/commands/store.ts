@@ -16,6 +16,7 @@ export async function handleStoreCommand(interaction: ChatInputCommandInteractio
 
   const validation = MediaService.validateMediaUrl(url);
   if (!validation.valid || !validation.type) {
+    console.warn(`Invalid media URL submitted by user ${interaction.user.id} in guild ${interaction.guildId}: ${url} (detected type: ${validation.type || 'none'})`);
     await interaction.reply({
       content: '❌ Invalid URL. Must be an image, GIF, or video.',
       flags: MessageFlags.Ephemeral,
@@ -34,6 +35,10 @@ export async function handleStoreCommand(interaction: ChatInputCommandInteractio
       guildId: interaction.guildId!,
       userId: interaction.user.id,
     });
+
+    if (process.env.DEBUG_MODE === 'true') {
+      console.log(`[DEBUG] Media saved: ${media.id} by user ${interaction.user.id} in guild ${interaction.guildId} with tags [${tags.join(', ')}]`);
+    }
 
     const embed = new EmbedBuilder()
       .setColor(Colors.Green)
