@@ -15,6 +15,7 @@ import {
   StringSelectMenuBuilder,
   StringSelectMenuInteraction,
   ActionRowBuilder,
+  MessageReferenceType,
 } from 'discord.js';
 import { MediaService } from '../services/media.service.js';
 import { SearchService } from '../services/search.service.js';
@@ -30,30 +31,38 @@ export async function handleContextMenuCommand(interaction: MessageContextMenuCo
 
   const mediaItems: Array<{ url: string; type: string; label: string; thumbnailUrl?: string }> = [];
 
+  // Check if this is a forwarded message
+  const isForwarded = message.reference?.type === MessageReferenceType.Forward;
+  const snapshot = isForwarded ? message.messageSnapshots.first() : null;
+
+  // Get attachments and embeds from snapshot if forwarded, otherwise from message
+  const attachments = snapshot?.attachments ?? message.attachments;
+  const embeds = snapshot?.embeds ?? message.embeds;
+  const labelSuffix = isForwarded ? ' (forwarded)' : '';
 
   let attachmentIndex = 1;
-  for (const attachment of message.attachments.values()) {
+  for (const attachment of attachments.values()) {
     const validation = MediaService.validateMediaUrl(attachment.url);
     if (validation.valid && validation.type) {
       const filename = attachment.name || 'unknown';
       mediaItems.push({
         url: attachment.url,
         type: validation.type,
-        label: `${validation.type.charAt(0).toUpperCase() + validation.type.slice(1)} ${attachmentIndex} - ${filename}`,
+        label: `${validation.type.charAt(0).toUpperCase() + validation.type.slice(1)} ${attachmentIndex} - ${filename}${labelSuffix}`,
       });
       attachmentIndex++;
     }
   }
 
   let embedIndex = 1;
-  for (const embed of message.embeds) {
+  for (const embed of embeds) {
     const isGifProvider = embed.provider?.name === 'Tenor' || embed.provider?.name === 'GIPHY';
 
     if (isGifProvider && embed.url) {
       mediaItems.push({
         url: embed.url,
         type: 'gif',
-        label: `GIF from ${embed.provider?.name}`,
+        label: `GIF from ${embed.provider?.name}${labelSuffix}`,
         ...(embed.thumbnail?.url && { thumbnailUrl: embed.thumbnail.url }),
       });
       embedIndex++;
@@ -66,7 +75,7 @@ export async function handleContextMenuCommand(interaction: MessageContextMenuCo
         mediaItems.push({
           url: embed.image.url,
           type: validation.type,
-          label: `${validation.type.charAt(0).toUpperCase() + validation.type.slice(1)} from embed ${embedIndex}`,
+          label: `${validation.type.charAt(0).toUpperCase() + validation.type.slice(1)} from embed ${embedIndex}${labelSuffix}`,
         });
       }
     }
@@ -76,7 +85,7 @@ export async function handleContextMenuCommand(interaction: MessageContextMenuCo
         mediaItems.push({
           url: embed.video.url,
           type: validation.type,
-          label: `Video from embed ${embedIndex}`,
+          label: `Video from embed ${embedIndex}${labelSuffix}`,
         });
       }
     }
@@ -86,7 +95,7 @@ export async function handleContextMenuCommand(interaction: MessageContextMenuCo
         mediaItems.push({
           url: embed.thumbnail.url,
           type: validation.type,
-          label: `Thumbnail from embed ${embedIndex}`,
+          label: `Thumbnail from embed ${embedIndex}${labelSuffix}`,
         });
       }
     }
@@ -94,8 +103,8 @@ export async function handleContextMenuCommand(interaction: MessageContextMenuCo
   }
 
   if (mediaItems.length === 0) {
-    const embedInfo = message.embeds.map(e => `${e.data.type || 'unknown'}`).join(', ');
-    console.warn(`No media found in message ${message.id} from user ${interaction.user.id} (guild: ${interaction.guildId}, attachments: ${message.attachments.size}, embeds: ${message.embeds.length}, embed types: [${embedInfo}])`);
+    const embedInfo = embeds.map(e => `${e.data.type || 'unknown'}`).join(', ');
+    console.warn(`No media found in message ${message.id} from user ${interaction.user.id} (guild: ${interaction.guildId}, forwarded: ${isForwarded}, attachments: ${attachments.size}, embeds: ${embeds.length}, embed types: [${embedInfo}])`);
     await interaction.reply({
       content: '❌ Nothing found. Please try a message with an image, GIF, or video.',
       flags: MessageFlags.Ephemeral,
