@@ -77,33 +77,65 @@ async function sendMedia(
     const isDiscordCdn = media.mediaUrl.includes('cdn.discordapp.com') ||
                         media.mediaUrl.includes('media.discordapp.net');
 
+    const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25 MB Discord limit
+
     if (isDiscordCdn) {
       const cleanUrl = media.mediaUrl.replace(/\\&/g, '&');
-      const response = await fetch(cleanUrl);
+      const response = await fetch(cleanUrl, { method: 'HEAD' });
       if (!response.ok) throw new Error('Failed to fetch media');
 
-      const buffer = Buffer.from(await response.arrayBuffer());
-      const filename = media.fileName || `media.${getExtension(media.mediaUrl)}`;
-      const attachment = new AttachmentBuilder(buffer, { name: filename });
-      const metadataText = `-# Sent by: <@${userId}>`;
+      const contentLength = parseInt(response.headers.get('content-length') || '0');
 
-      if (replyTarget) {
-        const targetChannel = await interaction.client.channels.fetch(replyTarget.channelId);
-        if (targetChannel && 'messages' in targetChannel) {
-          const targetMessage = await targetChannel.messages.fetch(replyTarget.messageId);
-          await targetMessage.reply({
-            content: metadataText,
-            files: [attachment],
-            allowedMentions: { parse: [] },
-          });
+      // If file is too large, fall back to URL
+      if (contentLength > MAX_FILE_SIZE) {
+        if (process.env.DEBUG_MODE === 'true') {
+          console.log(`[DEBUG] File too large (${(contentLength / 1024 / 1024).toFixed(2)} MB), sending URL instead`);
+        }
+        const messageContent = `-# Sent by: <@${userId}> | [↗](${media.mediaUrl})`;
+
+        if (replyTarget) {
+          const targetChannel = await interaction.client.channels.fetch(replyTarget.channelId);
+          if (targetChannel && 'messages' in targetChannel) {
+            const targetMessage = await targetChannel.messages.fetch(replyTarget.messageId);
+            await targetMessage.reply({
+              content: messageContent,
+              allowedMentions: { parse: [] },
+            });
+          }
+        } else {
+          if ('send' in channel) {
+            await channel.send({
+              content: messageContent,
+              allowedMentions: { parse: [] },
+            });
+          }
         }
       } else {
-        if ('send' in channel) {
-          await channel.send({
-            content: metadataText,
-            files: [attachment],
-            allowedMentions: { parse: [] },
-          });
+        // Re-upload the file
+        const fullResponse = await fetch(cleanUrl);
+        const buffer = Buffer.from(await fullResponse.arrayBuffer());
+        const filename = media.fileName || `media.${getExtension(media.mediaUrl)}`;
+        const attachment = new AttachmentBuilder(buffer, { name: filename });
+        const metadataText = `-# Sent by: <@${userId}>`;
+
+        if (replyTarget) {
+          const targetChannel = await interaction.client.channels.fetch(replyTarget.channelId);
+          if (targetChannel && 'messages' in targetChannel) {
+            const targetMessage = await targetChannel.messages.fetch(replyTarget.messageId);
+            await targetMessage.reply({
+              content: metadataText,
+              files: [attachment],
+              allowedMentions: { parse: [] },
+            });
+          }
+        } else {
+          if ('send' in channel) {
+            await channel.send({
+              content: metadataText,
+              files: [attachment],
+              allowedMentions: { parse: [] },
+            });
+          }
         }
       }
     } else {
@@ -137,21 +169,43 @@ async function sendMedia(
     });
   } catch (error: unknown) {
     console.error('Error sending media:', error);
-    if (error && typeof error === 'object' && 'code' in error && error.code === 50001) {
-      await interaction.update({
-        content:
-          '❌ I don\'t have permission to send messages in this channel.\n' +
-          'Please give me the **Send Messages** permission in Server Settings → Roles.',
-        embeds: [],
-        components: [],
-      });
-    } else {
-      await interaction.update({
-        content: '❗ Failed to send. Please try again.',
-        embeds: [],
-        components: [],
-      });
+    if (error && typeof error === 'object' && 'code' in error) {
+      if (error.code === 50001) {
+        await interaction.update({
+          content:
+            '❌ I don\'t have permission to send messages in this channel.\n' +
+            'Please give me the **Send Messages** permission in Server Settings → Roles.',
+          embeds: [],
+          components: [],
+        });
+        return;
+      } else if (error.code === 40005) {
+        // File too large - send URL instead
+        console.warn(`File too large for upload, falling back to URL for media ${media.id}`);
+        const messageContent = `-# Sent by: <@${userId}> | [↗](${media.mediaUrl})`;
+
+        if ('send' in channel) {
+          await channel.send({
+            content: messageContent,
+            allowedMentions: { parse: [] },
+          });
+        }
+
+        await MediaService.incrementRecallCount(media.id);
+        await interaction.update({
+          content: '✅ Sent! (File was too large, sent as link)',
+          embeds: [],
+          components: [],
+        });
+        return;
+      }
     }
+
+    await interaction.update({
+      content: '❗ Failed to send. Please try again.',
+      embeds: [],
+      components: [],
+    });
   }
 }
 
