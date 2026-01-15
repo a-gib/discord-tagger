@@ -82,7 +82,38 @@ async function sendMedia(
     if (isDiscordCdn) {
       const cleanUrl = media.mediaUrl.replace(/\\&/g, '&');
       const response = await fetch(cleanUrl, { method: 'HEAD' });
-      if (!response.ok) throw new Error('Failed to fetch media');
+
+      if (!response.ok) {
+        console.warn(`HEAD request failed for media ${media.id}: status ${response.status}, url: ${cleanUrl.substring(0, 100)}...`);
+        // Fall back to sending as URL if we can't check the file size
+        const messageContent = `-# Sent by: <@${userId}> | [↗](${media.mediaUrl})`;
+
+        if (replyTarget) {
+          const targetChannel = await interaction.client.channels.fetch(replyTarget.channelId);
+          if (targetChannel && 'messages' in targetChannel) {
+            const targetMessage = await targetChannel.messages.fetch(replyTarget.messageId);
+            await targetMessage.reply({
+              content: messageContent,
+              allowedMentions: { parse: [] },
+            });
+          }
+        } else {
+          if ('send' in channel) {
+            await channel.send({
+              content: messageContent,
+              allowedMentions: { parse: [] },
+            });
+          }
+        }
+
+        await MediaService.incrementRecallCount(media.id);
+        await interaction.update({
+          content: '✅ Sent! (Unable to re-upload, sent as link)',
+          embeds: [],
+          components: [],
+        });
+        return;
+      }
 
       const contentLength = parseInt(response.headers.get('content-length') || '0');
 
