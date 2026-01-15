@@ -37,7 +37,19 @@ async function sendMedia(
   userId: string,
   replyTarget?: { channelId: string; messageId: string }
 ): Promise<void> {
-  const channel = interaction.channel;
+  // Fetch channel if not available on interaction
+  let channel = interaction.channel;
+  if (!channel && interaction.channelId) {
+    try {
+      const fetchedChannel = await interaction.client.channels.fetch(interaction.channelId);
+      if (fetchedChannel && fetchedChannel.isTextBased()) {
+        channel = fetchedChannel;
+      }
+    } catch (error) {
+      console.error(`Failed to fetch channel ${interaction.channelId}: ${error}`);
+    }
+  }
+
   const channelType = channel?.type;
   const isTextBased = channel?.isTextBased();
 
@@ -51,7 +63,7 @@ async function sendMedia(
     return;
   }
 
-  if (interaction.channel.isDMBased()) {
+  if (channel.isDMBased()) {
     console.warn(`Cannot send media: DM attempt by user ${userId}`);
     await interaction.update({
       content: '❌ Cannot send media in DMs.',
@@ -86,11 +98,13 @@ async function sendMedia(
           });
         }
       } else {
-        await interaction.channel.send({
-          content: metadataText,
-          files: [attachment],
-          allowedMentions: { parse: [] },
-        });
+        if ('send' in channel) {
+          await channel.send({
+            content: metadataText,
+            files: [attachment],
+            allowedMentions: { parse: [] },
+          });
+        }
       }
     } else {
       const messageContent = `-# Sent by: <@${userId}> | [↗](${media.mediaUrl})`;
@@ -105,10 +119,12 @@ async function sendMedia(
           });
         }
       } else {
-        await interaction.channel.send({
-          content: messageContent,
-          allowedMentions: { parse: [] },
-        });
+        if ('send' in channel) {
+          await channel.send({
+            content: messageContent,
+            allowedMentions: { parse: [] },
+          });
+        }
       }
     }
 
