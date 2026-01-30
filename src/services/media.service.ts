@@ -113,8 +113,8 @@ export class MediaService {
 
   static async updateTags(
     id: string,
-    userId: string,
-    isAdmin: boolean,
+    _userId: string,
+    _isAdmin: boolean,
     newTags: string[],
     _unused?: string[] // Kept for backwards compatibility
   ): Promise<MediaRecord | null> {

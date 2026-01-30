@@ -10,7 +10,6 @@ import {
   ButtonInteraction,
   ModalSubmitInteraction,
   MessageFlags,
-  PermissionFlagsBits,
   ModalBuilder,
   TextInputBuilder,
   TextInputStyle,
@@ -19,7 +18,6 @@ import {
 import { MediaService } from '../services/media.service.js';
 import { TagService } from '../services/tag.service.js';
 import { TAG_INPUT_MAX_LENGTH } from '../constants.js';
-import { createMediaEmbed, createNavigationButtons } from '../utils/embeds.js';
 import { recallSessions } from './recall.js';
 import { topSessions } from './top.js';
 
@@ -101,11 +99,9 @@ export async function handleEditTagsModalSubmit(interaction: ModalSubmitInteract
 
   // Try to find results in either recall or top sessions
   let results = recallSessions.get(userId);
-  let sessionType: 'recall' | 'top' = 'recall';
 
   if (!results && interaction.message) {
     results = topSessions.get(interaction.message.id);
-    sessionType = 'top';
   }
 
   if (!results) {
@@ -138,13 +134,13 @@ export async function handleEditTagsModalSubmit(interaction: ModalSubmitInteract
 
   try {
     // Get current tags to show what changed
-    const oldTags = results[mediaIndex].tags;
+    const oldTags = results[mediaIndex]!.tags;
 
-    // Update tags in database
+    // Update tags in database - anyone can edit tags
     const updatedMedia = await MediaService.updateTags(
       mediaId,
       userId,
-      true,
+      true, // Allow all users to edit
       newTags,
       []
     );
