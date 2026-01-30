@@ -83,6 +83,12 @@ export function createNavigationButtons(
   if (mode === 'recall') {
     row.addComponents(
       new ButtonBuilder()
+        .setCustomId(`recall_edit_${mediaId}`)
+        .setLabel('Edit Tags')
+        .setStyle(ButtonStyle.Primary)
+    );
+    row.addComponents(
+      new ButtonBuilder()
         .setCustomId(`recall_send_${mediaId}`)
         .setLabel('✓ Send')
         .setStyle(ButtonStyle.Success)
@@ -93,6 +99,13 @@ export function createNavigationButtons(
         .setCustomId(`delete_confirm_${mediaId}`)
         .setLabel('🗑 Delete')
         .setStyle(ButtonStyle.Danger)
+    );
+  } else if (mode === 'top') {
+    row.addComponents(
+      new ButtonBuilder()
+        .setCustomId(`top_edit_${mediaId}`)
+        .setLabel('Edit Tags')
+        .setStyle(ButtonStyle.Primary)
     );
   }
 

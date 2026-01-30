@@ -111,6 +111,39 @@ export class MediaService {
     return true;
   }
 
+  static async updateTags(
+    id: string,
+    userId: string,
+    isAdmin: boolean,
+    newTags: string[],
+    _unused?: string[] // Kept for backwards compatibility
+  ): Promise<MediaRecord | null> {
+    const media = await prisma.media.findFirst({
+      where: { id, deletedAt: null },
+    });
+
+    if (!media) {
+      return null;
+    }
+
+    // Anyone can edit tags - no permission check needed
+
+    // Validate: Must have at least one tag
+    if (newTags.length === 0) {
+      throw new Error('LAST_TAG');
+    }
+
+    // Enforce max tags limit
+    const finalTags = newTags.slice(0, 20);
+
+    const updated = await prisma.media.update({
+      where: { id },
+      data: { tags: finalTags },
+    });
+
+    return this.parseMediaRecord(updated);
+  }
+
   static async incrementRecallCount(id: string): Promise<void> {
     await prisma.media.update({
       where: { id },

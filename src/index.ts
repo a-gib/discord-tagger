@@ -21,6 +21,7 @@ import {
   handleReplyContextMenu,
   handleReplyModalSubmit,
 } from './commands/context-menu.js';
+import { handleEditTagsButton, handleEditTagsModalSubmit } from './commands/edit-tags.js';
 import prisma from './utils/db.js';
 import { isGuildAllowed } from './utils/permissions.js';
 
@@ -96,14 +97,22 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
 
     if (interaction.isButton()) {
-      const [mode] = interaction.customId.split('_');
+      const [mode, action] = interaction.customId.split('_');
 
       if (mode === 'recall') {
-        await handleRecallButton(interaction);
+        if (action === 'edit') {
+          await handleEditTagsButton(interaction);
+        } else {
+          await handleRecallButton(interaction);
+        }
       } else if (mode === 'delete') {
         await handleDeleteButton(interaction);
       } else if (mode === 'top') {
-        await handleTopButton(interaction);
+        if (action === 'edit') {
+          await handleEditTagsButton(interaction);
+        } else {
+          await handleTopButton(interaction);
+        }
       }
     }
 
@@ -124,7 +133,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
 
     if (interaction.isModalSubmit()) {
-      if (interaction.customId.startsWith('save_media_')) {
+      if (interaction.customId.startsWith('edit_tags_modal_')) {
+        await handleEditTagsModalSubmit(interaction);
+      } else if (interaction.customId.startsWith('save_media_')) {
         await handleModalSubmit(interaction);
       } else if (interaction.customId.startsWith('reply_media_')) {
         await handleReplyModalSubmit(interaction);
