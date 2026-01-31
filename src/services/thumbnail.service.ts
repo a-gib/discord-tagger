@@ -135,6 +135,9 @@ class ThumbnailServiceClass {
     const isDiscordCdn = url.includes('cdn.discordapp.com') ||
                          url.includes('media.discordapp.net');
     if (!isDiscordCdn || !this.client || !this.storageChannelId) {
+      if (process.env.DEBUG_MODE === 'true') {
+        console.log(`[DEBUG] Refresh skipped: isDiscordCdn=${isDiscordCdn}, hasClient=${!!this.client}, hasChannel=${!!this.storageChannelId}`);
+      }
       return url;
     }
 
@@ -155,6 +158,9 @@ class ThumbnailServiceClass {
 
       // Extract refreshed URL from embed
       const embed = fetchedMessage.embeds[0];
+      if (process.env.DEBUG_MODE === 'true') {
+        console.log(`[DEBUG] Refresh: embeds=${fetchedMessage.embeds.length}, hasVideo=${!!embed?.video}, videoUrl=${embed?.video?.url?.substring(0, 80)}, embedUrl=${embed?.url?.substring(0, 80)}`);
+      }
       const refreshedUrl = embed?.video?.url || embed?.url || url;
 
       // Clean up
