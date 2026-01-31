@@ -8,6 +8,7 @@
 
 import prisma from '../utils/db.js';
 import { IMAGE_EXTENSIONS, GIF_EXTENSION, VIDEO_EXTENSIONS } from '../constants.js';
+import { ThumbnailService } from './thumbnail.service.js';
 
 export interface MediaData {
   mediaUrl: string;
@@ -70,6 +71,36 @@ export class MediaService {
     });
 
     return this.parseMediaRecord(media);
+  }
+
+  static async storeMediaWithThumbnail(data: MediaData): Promise<MediaRecord> {
+    // Generate thumbnail for videos if not already provided
+    if (process.env.DEBUG_MODE === 'true') {
+      console.log(`[DEBUG] storeMediaWithThumbnail called: type=${data.mediaType}, hasThumb=${!!data.thumbnailUrl}, enabled=${ThumbnailService.isEnabled()}`);
+    }
+    if (data.mediaType === 'video' && !data.thumbnailUrl && ThumbnailService.isEnabled()) {
+      try {
+        if (process.env.DEBUG_MODE === 'true') {
+          console.log(`[DEBUG] Generating thumbnail for: ${data.mediaUrl}`);
+        }
+        const thumbnailUrl = await ThumbnailService.generateForUrl(data.mediaUrl);
+        if (thumbnailUrl) {
+          data.thumbnailUrl = thumbnailUrl;
+          if (process.env.DEBUG_MODE === 'true') {
+            console.log(`[DEBUG] Generated thumbnail for video: ${thumbnailUrl}`);
+          }
+        } else if (process.env.DEBUG_MODE === 'true') {
+          console.log(`[DEBUG] Thumbnail generation returned null`);
+        }
+      } catch (error) {
+        // Thumbnail generation failure is non-blocking
+        if (process.env.DEBUG_MODE === 'true') {
+          console.log(`[DEBUG] Thumbnail generation failed, proceeding without thumbnail: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+      }
+    }
+
+    return this.storeMedia(data);
   }
 
   static async getMediaById(id: string): Promise<MediaRecord | null> {

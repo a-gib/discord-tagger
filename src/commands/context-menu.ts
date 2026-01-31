@@ -170,6 +170,9 @@ export async function handleModalSubmit(interaction: ModalSubmitInteraction) {
   const messageId = parts[0] || '';
   const selectionValue = parts[1] || '0';
 
+  // Defer reply immediately - thumbnail generation can take time
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
   const tagsInput = interaction.fields.getTextInputValue('tags');
   const tags = await validateTags(interaction, tagsInput);
   if (!tags) return;
@@ -180,9 +183,8 @@ export async function handleModalSubmit(interaction: ModalSubmitInteraction) {
 
     if (!mediaItems) {
       console.warn(`Media selection session expired for user ${interaction.user.id}, message ${messageId} (guild: ${interaction.guildId}, selectionValue: ${selectionValue})`);
-      await interaction.reply({
+      await interaction.editReply({
         content: '❗ Session expired. Please try again.',
-        flags: MessageFlags.Ephemeral,
       });
       return;
     }
@@ -191,7 +193,7 @@ export async function handleModalSubmit(interaction: ModalSubmitInteraction) {
       const savedMedia = [];
 
       for (const item of mediaItems) {
-        const media = await MediaService.storeMedia({
+        const media = await MediaService.storeMediaWithThumbnail({
           mediaUrl: item.url,
           mediaType: item.type,
           tags,
@@ -214,24 +216,22 @@ export async function handleModalSubmit(interaction: ModalSubmitInteraction) {
         )
         .setTimestamp();
 
-      await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
+      await interaction.editReply({ embeds: [embed] });
       mediaSelectionCache.delete(cacheKey);
     } else {
       const mediaIndex = parseInt(selectionValue);
 
       if (mediaIndex >= mediaItems.length) {
-        await interaction.reply({
+        await interaction.editReply({
           content: '❌ Nothing found.',
-          flags: MessageFlags.Ephemeral,
         });
         return;
       }
 
       const selectedMedia = mediaItems[mediaIndex];
       if (!selectedMedia) {
-        await interaction.reply({
+        await interaction.editReply({
           content: '❌ Nothing found.',
-          flags: MessageFlags.Ephemeral,
         });
         return;
       }
@@ -239,7 +239,7 @@ export async function handleModalSubmit(interaction: ModalSubmitInteraction) {
       const mediaUrl = selectedMedia.url;
       const mediaType = selectedMedia.type;
 
-      const media = await MediaService.storeMedia({
+      const media = await MediaService.storeMediaWithThumbnail({
         mediaUrl,
         mediaType,
         tags,
@@ -263,13 +263,12 @@ export async function handleModalSubmit(interaction: ModalSubmitInteraction) {
         embed.setFooter({ text: `ID: ${media.id}` });
       }
 
-      await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
+      await interaction.editReply({ embeds: [embed] });
     }
   } catch (error) {
     console.error('Error saving media from context menu:', error);
-    await interaction.reply({
+    await interaction.editReply({
       content: '❗ Failed to save. Please try again.',
-      flags: MessageFlags.Ephemeral,
     });
   }
 }

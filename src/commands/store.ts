@@ -24,11 +24,16 @@ export async function handleStoreCommand(interaction: ChatInputCommandInteractio
     return;
   }
 
+  // Defer for videos since thumbnail generation can take time
+  if (validation.type === 'video') {
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+  }
+
   const tags = await validateTags(interaction, tagsInput);
   if (!tags) return;
 
   try {
-    const media = await MediaService.storeMedia({
+    const media = await MediaService.storeMediaWithThumbnail({
       mediaUrl: url,
       mediaType: validation.type,
       tags,
@@ -48,19 +53,25 @@ export async function handleStoreCommand(interaction: ChatInputCommandInteractio
         { name: 'Tags', value: tags.join(', '), inline: false }
       )
       .setTimestamp()
-      .setImage(url);
+      .setImage(media.thumbnailUrl || url);
 
     // Only show ID when debug mode is enabled
     if (process.env.DEBUG_MODE === 'true') {
       embed.setFooter({ text: `ID: ${media.id}` });
     }
 
-    await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
+    if (interaction.deferred) {
+      await interaction.editReply({ embeds: [embed] });
+    } else {
+      await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
+    }
   } catch (error) {
     console.error('Error saving media:', error);
-    await interaction.reply({
-      content: '❗ Failed to save. Please try again.',
-      flags: MessageFlags.Ephemeral,
-    });
+    const errorMessage = { content: '❗ Failed to save. Please try again.' };
+    if (interaction.deferred) {
+      await interaction.editReply(errorMessage);
+    } else {
+      await interaction.reply({ ...errorMessage, flags: MessageFlags.Ephemeral });
+    }
   }
 }

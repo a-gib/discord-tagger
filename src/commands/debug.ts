@@ -17,6 +17,7 @@ import { recallSessions, replyTargets } from './recall.js';
 import { deleteSessions } from './delete.js';
 import { topSessions } from './top.js';
 import { MediaService } from '../services/media.service.js';
+import { ThumbnailService } from '../services/thumbnail.service.js';
 import { BOT_OWNER_ID } from '../constants.js';
 
 const startTime = Date.now();
@@ -51,6 +52,9 @@ export async function handleDebugCommand(interaction: ChatInputCommandInteractio
       break;
     case 'purge-guild':
       await handlePurgeGuild(interaction);
+      break;
+    case 'migrate-thumbnails':
+      await handleMigrateThumbnails(interaction);
       break;
   }
 }
@@ -201,5 +205,84 @@ async function handlePurgeGuild(interaction: ChatInputCommandInteraction) {
   } catch (error) {
     console.error('Error in debug purge-guild:', error);
     await interaction.editReply({ content: '❗ Failed to purge guild.' });
+  }
+}
+
+async function handleMigrateThumbnails(interaction: ChatInputCommandInteraction) {
+  try {
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
+    if (!ThumbnailService.isEnabled()) {
+      await interaction.editReply({
+        content: '❌ Thumbnail service is not enabled. Set THUMBNAIL_STORAGE_CHANNEL_ID.',
+      });
+      return;
+    }
+
+    const videos = await prisma.media.findMany({
+      where: {
+        mediaType: 'video',
+        thumbnailUrl: null,
+        deletedAt: null,
+      },
+    });
+
+    if (videos.length === 0) {
+      await interaction.editReply({
+        content: '✅ No videos need thumbnail migration.',
+      });
+      return;
+    }
+
+    await interaction.editReply({
+      content: `🖼️ Found ${videos.length} videos without thumbnails. Starting migration...`,
+    });
+
+    let succeeded = 0;
+    let failed = 0;
+
+    for (let i = 0; i < videos.length; i++) {
+      const video = videos[i]!;
+
+      try {
+        const thumbnailUrl = await ThumbnailService.generateForUrl(video.mediaUrl);
+
+        if (thumbnailUrl) {
+          await prisma.media.update({
+            where: { id: video.id },
+            data: { thumbnailUrl },
+          });
+          succeeded++;
+        } else {
+          failed++;
+          console.log(`[MIGRATE] Failed to generate thumbnail for video ${video.id}`);
+        }
+      } catch (error) {
+        failed++;
+        console.error(`[MIGRATE] Error processing video ${video.id}:`, error);
+      }
+
+      // Update progress every 5 videos
+      if ((i + 1) % 5 === 0 || i === videos.length - 1) {
+        await interaction.editReply({
+          content: `🖼️ Processing video ${i + 1} of ${videos.length}... (${succeeded} succeeded, ${failed} failed)`,
+        });
+      }
+    }
+
+    const embed = new EmbedBuilder()
+      .setColor(succeeded > 0 ? Colors.Green : Colors.Orange)
+      .setTitle('🖼️ Thumbnail Migration Complete')
+      .addFields(
+        { name: 'Total Videos', value: videos.length.toString(), inline: true },
+        { name: 'Succeeded', value: succeeded.toString(), inline: true },
+        { name: 'Failed', value: failed.toString(), inline: true }
+      )
+      .setTimestamp();
+
+    await interaction.editReply({ content: '', embeds: [embed] });
+  } catch (error) {
+    console.error('Error in debug migrate-thumbnails:', error);
+    await interaction.editReply({ content: '❗ Failed to migrate thumbnails.' });
   }
 }

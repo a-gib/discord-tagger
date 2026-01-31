@@ -24,6 +24,7 @@ import {
 import { handleEditTagsButton, handleEditTagsModalSubmit } from './commands/edit-tags.js';
 import prisma from './utils/db.js';
 import { isGuildAllowed } from './utils/permissions.js';
+import { ThumbnailService } from './services/thumbnail.service.js';
 
 dotenv.config();
 
@@ -50,6 +51,7 @@ client.once('clientReady', () => {
   if (process.env.DEBUG_MODE === 'true') {
     console.log('[DEBUG] Debug mode enabled');
   }
+  ThumbnailService.initialize(client);
 });
 
 client.on(Events.InteractionCreate, async (interaction) => {

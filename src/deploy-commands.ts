@@ -139,6 +139,9 @@ if (debugMode) {
             .setRequired(true)
         )
     )
+    .addSubcommand((sub) =>
+      sub.setName('migrate-thumbnails').setDescription('Generate thumbnails for existing videos')
+    )
     .toJSON();
 
   commandsJSON.push(debugCommand);
