@@ -205,11 +205,15 @@ class ThumbnailServiceClass {
       ]);
 
       let output = '';
+      let stderr = '';
       let killed = false;
 
       const timeout = setTimeout(() => {
         killed = true;
         ffprobe.kill('SIGTERM');
+        if (process.env.DEBUG_MODE === 'true') {
+          console.log(`[DEBUG] ffprobe timeout`);
+        }
         resolve(null);
       }, FFPROBE_TIMEOUT_MS);
 
@@ -217,9 +221,16 @@ class ThumbnailServiceClass {
         output += data.toString();
       });
 
+      ffprobe.stderr.on('data', (data) => {
+        stderr += data.toString();
+      });
+
       ffprobe.on('close', (code) => {
         clearTimeout(timeout);
         if (killed || code !== 0) {
+          if (process.env.DEBUG_MODE === 'true') {
+            console.log(`[DEBUG] ffprobe failed: code=${code}, stderr=${stderr.trim().substring(0, 200)}`);
+          }
           resolve(null);
           return;
         }
@@ -228,8 +239,11 @@ class ThumbnailServiceClass {
         resolve(isNaN(duration) ? null : duration);
       });
 
-      ffprobe.on('error', () => {
+      ffprobe.on('error', (err) => {
         clearTimeout(timeout);
+        if (process.env.DEBUG_MODE === 'true') {
+          console.log(`[DEBUG] ffprobe spawn error: ${err.message}`);
+        }
         resolve(null);
       });
     });
