@@ -20,6 +20,9 @@ import {
   handleMediaSelectMenu,
   handleReplyContextMenu,
   handleReplyModalSubmit,
+  handleOpenSaveModalButton,
+  handleOcrEditTagsButton,
+  handleOcrEditModalSubmit,
 } from './commands/context-menu.js';
 import { handleEditTagsButton, handleEditTagsModalSubmit } from './commands/edit-tags.js';
 import prisma from './utils/db.js';
@@ -99,6 +102,18 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
 
     if (interaction.isButton()) {
+      // Handle OCR save modal button
+      if (interaction.customId.startsWith('open_save_modal_')) {
+        await handleOpenSaveModalButton(interaction);
+        return;
+      }
+
+      // Handle OCR edit tags button
+      if (interaction.customId.startsWith('ocr_edit_tags_')) {
+        await handleOcrEditTagsButton(interaction);
+        return;
+      }
+
       const [mode, action] = interaction.customId.split('_');
 
       if (mode === 'recall') {
@@ -137,6 +152,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
     if (interaction.isModalSubmit()) {
       if (interaction.customId.startsWith('edit_tags_modal_')) {
         await handleEditTagsModalSubmit(interaction);
+      } else if (interaction.customId.startsWith('ocr_edit_modal_')) {
+        await handleOcrEditModalSubmit(interaction);
       } else if (interaction.customId.startsWith('save_media_')) {
         await handleModalSubmit(interaction);
       } else if (interaction.customId.startsWith('reply_media_')) {

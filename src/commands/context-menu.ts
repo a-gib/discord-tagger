@@ -16,15 +16,21 @@ import {
   StringSelectMenuInteraction,
   ActionRowBuilder,
   MessageReferenceType,
+  ButtonBuilder,
+  ButtonStyle,
+  ButtonInteraction,
 } from 'discord.js';
 import { MediaService } from '../services/media.service.js';
 import { SearchService } from '../services/search.service.js';
+import { OcrService } from '../services/ocr.service.js';
+import { ThumbnailService } from '../services/thumbnail.service.js';
 import { validateTags } from '../utils/validation.js';
 import { replyTargets, recallSessions } from './recall.js';
-import { createMediaEmbed, createNavigationButtons, createTagsModal } from '../utils/embeds.js';
+import { createMediaEmbed, createNavigationButtons, createTagsModal, createTagsModalWithDefault } from '../utils/embeds.js';
 import { SESSION_TIMEOUT_MS } from '../constants.js';
 
 const mediaSelectionCache = new Map<string, Array<{ url: string; type: string; label: string; thumbnailUrl?: string }>>();
+const ocrResultsCache = new Map<string, string[]>();
 
 export async function handleContextMenuCommand(interaction: MessageContextMenuCommandInteraction) {
   const message = interaction.targetMessage;
@@ -113,15 +119,100 @@ export async function handleContextMenuCommand(interaction: MessageContextMenuCo
   }
 
   if (mediaItems.length === 1) {
-    const modal = createTagsModal(`save_media_${message.id}_0`, 'Save Media to Stash');
-    mediaSelectionCache.set(`${interaction.user.id}_${message.id}`, mediaItems);
+    const selectedMedia = mediaItems[0]!;
+    const cacheKey = `${interaction.user.id}_${message.id}`;
+
+    // Defer to buy time for OCR
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
+    // Determine what to OCR based on media type
+    let ocrTargetUrl: string | null = null;
+    let generatedThumbnailUrl: string | null = null;
+
+    if (selectedMedia.type === 'image' || selectedMedia.type === 'gif') {
+      ocrTargetUrl = selectedMedia.url;
+    } else if (selectedMedia.type === 'video') {
+      // For videos, generate thumbnail first and OCR that
+      if (ThumbnailService.isEnabled()) {
+        generatedThumbnailUrl = await ThumbnailService.generateForUrl(selectedMedia.url);
+        if (generatedThumbnailUrl) {
+          ocrTargetUrl = generatedThumbnailUrl;
+        }
+      }
+    }
+
+    // Run OCR if we have a target
+    let suggestedTags: string[] = [];
+    if (ocrTargetUrl) {
+      suggestedTags = await OcrService.extractTags(ocrTargetUrl);
+    }
+
+    // If OCR found tags, auto-save and show Edit Tags button
+    if (suggestedTags.length > 0) {
+      try {
+        const media = await MediaService.storeMediaWithThumbnail({
+          mediaUrl: selectedMedia.url,
+          mediaType: selectedMedia.type,
+          tags: suggestedTags,
+          guildId: interaction.guildId!,
+          userId: interaction.user.id,
+          ...(selectedMedia.thumbnailUrl && { thumbnailUrl: selectedMedia.thumbnailUrl }),
+          ...(generatedThumbnailUrl && { thumbnailUrl: generatedThumbnailUrl }),
+        });
+
+        const embed = new EmbedBuilder()
+          .setColor(Colors.Green)
+          .setTitle('Saved Successfully')
+          .addFields(
+            { name: 'Type', value: selectedMedia.type, inline: true },
+            { name: 'Tags', value: suggestedTags.join(', '), inline: false }
+          )
+          .setTimestamp()
+          .setImage(media.thumbnailUrl || selectedMedia.url);
+
+        if (process.env.DEBUG_MODE === 'true') {
+          embed.setFooter({ text: `ID: ${media.id}` });
+        }
+
+        const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+          new ButtonBuilder()
+            .setCustomId(`ocr_edit_tags_${media.id}`)
+            .setLabel('Edit Tags')
+            .setStyle(ButtonStyle.Primary)
+        );
+
+        await interaction.editReply({
+          embeds: [embed],
+          components: [row],
+        });
+        return;
+      } catch (error) {
+        console.error('Error auto-saving with OCR tags:', error);
+        // Fall through to manual flow
+      }
+    }
+
+    // No OCR tags found (or save failed) - show Add Tags button
+    mediaSelectionCache.set(cacheKey, mediaItems);
+    ocrResultsCache.set(cacheKey, []);
 
     // Auto-cleanup after 15 minutes
     setTimeout(() => {
-      mediaSelectionCache.delete(`${interaction.user.id}_${message.id}`);
+      mediaSelectionCache.delete(cacheKey);
+      ocrResultsCache.delete(cacheKey);
     }, SESSION_TIMEOUT_MS);
 
-    await interaction.showModal(modal);
+    const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder()
+        .setCustomId(`open_save_modal_${message.id}_0`)
+        .setLabel('Add Tags')
+        .setStyle(ButtonStyle.Primary)
+    );
+
+    await interaction.editReply({
+      content: 'Ready to save! Add tags:',
+      components: [row],
+    });
     return;
   }
 
@@ -269,6 +360,93 @@ export async function handleModalSubmit(interaction: ModalSubmitInteraction) {
     console.error('Error saving media from context menu:', error);
     await interaction.editReply({
       content: '❗ Failed to save. Please try again.',
+    });
+  }
+}
+
+export async function handleOpenSaveModalButton(interaction: ButtonInteraction) {
+  const parts = interaction.customId.replace('open_save_modal_', '').split('_');
+  const messageId = parts[0] || '';
+  const selectionValue = parts[1] || '0';
+
+  const cacheKey = `${interaction.user.id}_${messageId}`;
+  const suggestedTags = ocrResultsCache.get(cacheKey) || [];
+
+  // Create modal with pre-filled tags
+  const modal = createTagsModalWithDefault(
+    `save_media_${messageId}_${selectionValue}`,
+    'Save Media to Stash',
+    suggestedTags.join(' ')
+  );
+
+  await interaction.showModal(modal);
+}
+
+export async function handleOcrEditTagsButton(interaction: ButtonInteraction) {
+  const mediaId = interaction.customId.replace('ocr_edit_tags_', '');
+
+  // Fetch media directly from database
+  const media = await MediaService.getMediaById(mediaId);
+
+  if (!media) {
+    await interaction.reply({
+      content: '❗ Media not found.',
+      flags: MessageFlags.Ephemeral,
+    });
+    return;
+  }
+
+  // Show edit modal with current tags
+  const modal = createTagsModalWithDefault(
+    `ocr_edit_modal_${mediaId}`,
+    'Edit Tags',
+    media.tags.join(' ')
+  );
+
+  await interaction.showModal(modal);
+}
+
+export async function handleOcrEditModalSubmit(interaction: ModalSubmitInteraction) {
+  const mediaId = interaction.customId.replace('ocr_edit_modal_', '');
+  const tagsInput = interaction.fields.getTextInputValue('tags') || '';
+  const tags = await validateTags(interaction, tagsInput);
+  if (!tags) return;
+
+  try {
+    const updatedMedia = await MediaService.updateTags(
+      mediaId,
+      interaction.user.id,
+      true, // Allow edit
+      tags,
+      []
+    );
+
+    if (!updatedMedia) {
+      await interaction.reply({
+        content: '❗ Failed to update tags.',
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+
+    await interaction.reply({
+      content: `Tags updated to: ${tags.join(', ')}`,
+      flags: MessageFlags.Ephemeral,
+    });
+  } catch (error) {
+    console.error('Error updating OCR tags:', error);
+
+    if (error instanceof Error && error.message === 'LAST_TAG') {
+      await interaction.reply({
+        content: '❌ Cannot remove all tags! Media items must have at least one tag.',
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+
+    await interaction.reply({
+      content: '❗ Failed to update tags.',
+      flags: MessageFlags.Ephemeral,
     });
   }
 }

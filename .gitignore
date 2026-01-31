@@ -31,6 +31,9 @@ prisma/*.db-journal
 # Temporary files
 tmpclaude-*
 
+# Tesseract language data
+*.traineddata
+
 # Claude Code
 .claude/
 CLAUDE.md

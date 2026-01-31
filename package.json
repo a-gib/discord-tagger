@@ -18,14 +18,20 @@
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio"
   },
-  "keywords": ["discord", "bot", "stash", "media"],
+  "keywords": [
+    "discord",
+    "bot",
+    "stash",
+    "media"
+  ],
   "author": "a-gib",
   "license": "MIT",
   "packageManager": "pnpm@10.28.0",
   "dependencies": {
     "@prisma/client": "^6.2.0",
     "discord.js": "^14.17.3",
-    "dotenv": "^16.4.7"
+    "dotenv": "^16.4.7",
+    "tesseract.js": "^7.0.0"
   },
   "devDependencies": {
     "@types/node": "^25.0.6",

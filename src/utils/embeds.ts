@@ -113,6 +113,10 @@ export function createNavigationButtons(
 }
 
 export function createTagsModal(customId: string, title: string): ModalBuilder {
+  return createTagsModalWithDefault(customId, title, '');
+}
+
+export function createTagsModalWithDefault(customId: string, title: string, defaultValue: string): ModalBuilder {
   const modal = new ModalBuilder()
     .setCustomId(customId)
     .setTitle(title);
@@ -124,6 +128,10 @@ export function createTagsModal(customId: string, title: string): ModalBuilder {
     .setPlaceholder('e.g., plumber guh')
     .setRequired(true)
     .setMaxLength(TAG_INPUT_MAX_LENGTH);
+
+  if (defaultValue) {
+    tagsInput.setValue(defaultValue);
+  }
 
   const row = new ActionRowBuilder<TextInputBuilder>().addComponents(tagsInput);
   modal.addComponents(row);
