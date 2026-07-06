@@ -23,14 +23,14 @@ import {
 import { MediaService } from '../services/media.service.js';
 import { SearchService } from '../services/search.service.js';
 import { OcrService } from '../services/ocr.service.js';
-import { ThumbnailService } from '../services/thumbnail.service.js';
 import { validateTags } from '../utils/validation.js';
 import { replyTargets, recallSessions } from './recall.js';
 import { createMediaEmbed, createNavigationButtons, createTagsModal, createTagsModalWithDefault } from '../utils/embeds.js';
 import { SESSION_TIMEOUT_MS } from '../constants.js';
 
 const mediaSelectionCache = new Map<string, Array<{ url: string; type: string; label: string; thumbnailUrl?: string }>>();
-const ocrResultsCache = new Map<string, string[]>();
+// Key: cacheKey, Value: Map<itemIndex, suggestedTags>
+const ocrResultsCache = new Map<string, Map<number, string[]>>();
 
 export async function handleContextMenuCommand(interaction: MessageContextMenuCommandInteraction) {
   const message = interaction.targetMessage;
@@ -122,30 +122,30 @@ export async function handleContextMenuCommand(interaction: MessageContextMenuCo
     const selectedMedia = mediaItems[0]!;
     const cacheKey = `${interaction.user.id}_${message.id}`;
 
-    // Defer to buy time for OCR
+    // For GIFs and videos, skip OCR and show modal directly
+    if (selectedMedia.type === 'gif' || selectedMedia.type === 'video') {
+      mediaSelectionCache.set(cacheKey, mediaItems);
+      ocrResultsCache.set(cacheKey, new Map<number, string[]>());
+
+      setTimeout(() => {
+        mediaSelectionCache.delete(cacheKey);
+        ocrResultsCache.delete(cacheKey);
+      }, SESSION_TIMEOUT_MS);
+
+      const modal = createTagsModalWithDefault(
+        `save_media_${message.id}_0`,
+        'Save Media to Stash',
+        ''
+      );
+      await interaction.showModal(modal);
+      return;
+    }
+
+    // For images, continue with OCR flow
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
-    // Determine what to OCR based on media type
-    let ocrTargetUrl: string | null = null;
-    let generatedThumbnailUrl: string | null = null;
-
-    if (selectedMedia.type === 'image' || selectedMedia.type === 'gif') {
-      ocrTargetUrl = selectedMedia.url;
-    } else if (selectedMedia.type === 'video') {
-      // For videos, generate thumbnail first and OCR that
-      if (ThumbnailService.isEnabled()) {
-        generatedThumbnailUrl = await ThumbnailService.generateForUrl(selectedMedia.url);
-        if (generatedThumbnailUrl) {
-          ocrTargetUrl = generatedThumbnailUrl;
-        }
-      }
-    }
-
-    // Run OCR if we have a target
-    let suggestedTags: string[] = [];
-    if (ocrTargetUrl) {
-      suggestedTags = await OcrService.extractTags(ocrTargetUrl);
-    }
+    // Run OCR on images
+    const suggestedTags = await OcrService.extractTags(selectedMedia.url);
 
     // If OCR found tags, auto-save and show Edit Tags button
     if (suggestedTags.length > 0) {
@@ -157,7 +157,6 @@ export async function handleContextMenuCommand(interaction: MessageContextMenuCo
           guildId: interaction.guildId!,
           userId: interaction.user.id,
           ...(selectedMedia.thumbnailUrl && { thumbnailUrl: selectedMedia.thumbnailUrl }),
-          ...(generatedThumbnailUrl && { thumbnailUrl: generatedThumbnailUrl }),
         });
 
         const embed = new EmbedBuilder()
@@ -194,7 +193,7 @@ export async function handleContextMenuCommand(interaction: MessageContextMenuCo
 
     // No OCR tags found (or save failed) - show Add Tags button
     mediaSelectionCache.set(cacheKey, mediaItems);
-    ocrResultsCache.set(cacheKey, []);
+    ocrResultsCache.set(cacheKey, new Map<number, string[]>());
 
     // Auto-cleanup after 15 minutes
     setTimeout(() => {
@@ -216,33 +215,99 @@ export async function handleContextMenuCommand(interaction: MessageContextMenuCo
     return;
   }
 
+  const cacheKey = `${interaction.user.id}_${message.id}`;
+
+  // Check if any items are images (for OCR)
+  const hasImages = mediaItems.some(item => item.type === 'image');
+
+  if (hasImages) {
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
+    // Run OCR on all images in parallel
+    const ocrResults = new Map<number, string[]>();
+    await Promise.all(
+      mediaItems.map(async (item, index) => {
+        if (item.type === 'image') {
+          const tags = await OcrService.extractTags(item.url);
+          if (tags.length > 0) {
+            ocrResults.set(index, tags);
+          }
+        }
+      })
+    );
+
+    // Store results in cache
+    mediaSelectionCache.set(cacheKey, mediaItems);
+    ocrResultsCache.set(cacheKey, ocrResults);
+
+    // Build select menu with OCR suggestions in descriptions
+    const selectMenu = new StringSelectMenuBuilder()
+      .setCustomId(`select_media_${message.id}`)
+      .setPlaceholder('Choose which media to save')
+      .addOptions([
+        {
+          label: `Save All (${mediaItems.length} items)`,
+          description: 'Enter tags to add to all items',
+          value: 'all',
+        },
+        ...mediaItems.map((item, index) => {
+          const suggestedTags = ocrResults.get(index);
+          const description = suggestedTags?.length
+            ? `Tags: ${suggestedTags.join(', ')}`.slice(0, 100)
+            : `${item.type} - no suggested tags`;
+          return {
+            label: item.label.slice(0, 100),
+            description,
+            value: index.toString(),
+          };
+        }),
+      ]);
+
+    const row = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(selectMenu);
+
+    // Cleanup timeout
+    setTimeout(() => {
+      mediaSelectionCache.delete(cacheKey);
+      ocrResultsCache.delete(cacheKey);
+    }, SESSION_TIMEOUT_MS);
+
+    await interaction.editReply({
+      content: `This message has ${mediaItems.length} items. Choose which to save:`,
+      components: [row],
+    });
+    return;
+  }
+
+  // No images - show dropdown immediately (no defer needed)
   const selectMenu = new StringSelectMenuBuilder()
     .setCustomId(`select_media_${message.id}`)
     .setPlaceholder('Choose which media to save')
     .addOptions([
       {
-        label: `💾 Save All (${mediaItems.length} items)`,
+        label: `Save All (${mediaItems.length} items)`,
         description: 'Save all media with the same tags',
         value: 'all',
       },
       ...mediaItems.map((item, index) => ({
-        label: item.label,
-        description: `${item.type} - Click to save this one`,
+        label: item.label.slice(0, 100),
+        description: `${item.type} - no suggested tags`,
         value: index.toString(),
       })),
     ]);
 
   const row = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(selectMenu);
 
-  mediaSelectionCache.set(`${interaction.user.id}_${message.id}`, mediaItems);
+  mediaSelectionCache.set(cacheKey, mediaItems);
+  ocrResultsCache.set(cacheKey, new Map<number, string[]>());
 
   // Auto-cleanup after 15 minutes
   setTimeout(() => {
-    mediaSelectionCache.delete(`${interaction.user.id}_${message.id}`);
+    mediaSelectionCache.delete(cacheKey);
+    ocrResultsCache.delete(cacheKey);
   }, SESSION_TIMEOUT_MS);
 
   await interaction.reply({
-    content: `📎 This message has ${mediaItems.length} items. Choose which one to save:`,
+    content: `This message has ${mediaItems.length} items. Choose which one to save:`,
     components: [row],
     flags: MessageFlags.Ephemeral,
   });
@@ -251,8 +316,22 @@ export async function handleContextMenuCommand(interaction: MessageContextMenuCo
 export async function handleMediaSelectMenu(interaction: StringSelectMenuInteraction) {
   const messageId = interaction.customId.replace('select_media_', '');
   const selectedValue = interaction.values[0] || '0';
+  const cacheKey = `${interaction.user.id}_${messageId}`;
 
-  const modal = createTagsModal(`save_media_${messageId}_${selectedValue}`, 'Save Media to Stash');
+  let defaultTags = '';
+  if (selectedValue !== 'all') {
+    const ocrResults = ocrResultsCache.get(cacheKey);
+    const suggestedTags = ocrResults?.get(parseInt(selectedValue));
+    if (suggestedTags?.length) {
+      defaultTags = suggestedTags.join(' ');
+    }
+  }
+
+  const modal = createTagsModalWithDefault(
+    `save_media_${messageId}_${selectedValue}`,
+    'Save Media to Stash',
+    defaultTags
+  );
   await interaction.showModal(modal);
 }
 
@@ -282,14 +361,22 @@ export async function handleModalSubmit(interaction: ModalSubmitInteraction) {
 
     if (selectionValue === 'all') {
       const savedMedia = [];
+      const ocrResults = ocrResultsCache.get(cacheKey);
 
-      for (const item of mediaItems) {
+      for (let i = 0; i < mediaItems.length; i++) {
+        const item = mediaItems[i]!;
+        const itemOcrTags = ocrResults?.get(i) || [];
+
+        // Merge: OCR tags + user tags, deduplicated
+        const mergedTags = [...new Set([...itemOcrTags, ...tags])];
+
         const media = await MediaService.storeMediaWithThumbnail({
           mediaUrl: item.url,
           mediaType: item.type,
-          tags,
+          tags: mergedTags,
           guildId: interaction.guildId!,
           userId: interaction.user.id,
+          ...(item.thumbnailUrl && { thumbnailUrl: item.thumbnailUrl }),
         });
         savedMedia.push(media);
       }
@@ -300,7 +387,7 @@ export async function handleModalSubmit(interaction: ModalSubmitInteraction) {
 
       const embed = new EmbedBuilder()
         .setColor(Colors.Green)
-        .setTitle(`✅ Saved ${savedMedia.length} Items`)
+        .setTitle(`Saved ${savedMedia.length} Items`)
         .addFields(
           { name: 'Items', value: savedMedia.length.toString(), inline: true },
           { name: 'Tags', value: tags.join(', '), inline: false }
@@ -309,6 +396,7 @@ export async function handleModalSubmit(interaction: ModalSubmitInteraction) {
 
       await interaction.editReply({ embeds: [embed] });
       mediaSelectionCache.delete(cacheKey);
+      ocrResultsCache.delete(cacheKey);
     } else {
       const mediaIndex = parseInt(selectionValue);
 
@@ -370,7 +458,8 @@ export async function handleOpenSaveModalButton(interaction: ButtonInteraction) 
   const selectionValue = parts[1] || '0';
 
   const cacheKey = `${interaction.user.id}_${messageId}`;
-  const suggestedTags = ocrResultsCache.get(cacheKey) || [];
+  const ocrResults = ocrResultsCache.get(cacheKey);
+  const suggestedTags = ocrResults?.get(0) || [];
 
   // Create modal with pre-filled tags
   const modal = createTagsModalWithDefault(

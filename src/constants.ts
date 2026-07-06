@@ -22,6 +22,6 @@ export const MAX_TAGS_PER_ITEM = 20;
 export const TAG_INPUT_MAX_LENGTH = 500;
 
 // Media type extensions
-export const IMAGE_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.webp'] as const;
-export const GIF_EXTENSION = '.gif';
+export const IMAGE_EXTENSIONS = ['.png', '.jpg', '.jpeg'] as const;
+export const GIF_EXTENSIONS = ['.gif', '.webp'] as const;
 export const VIDEO_EXTENSIONS = ['.mp4', '.mov', '.webm'] as const;

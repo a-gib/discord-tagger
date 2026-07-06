@@ -7,7 +7,7 @@
  */
 
 import prisma from '../utils/db.js';
-import { IMAGE_EXTENSIONS, GIF_EXTENSION, VIDEO_EXTENSIONS } from '../constants.js';
+import { IMAGE_EXTENSIONS, GIF_EXTENSIONS, VIDEO_EXTENSIONS } from '../constants.js';
 import { ThumbnailService } from './thumbnail.service.js';
 
 export interface MediaData {
@@ -42,12 +42,12 @@ export class MediaService {
       return { valid: true, type: 'gif' };
     }
 
-    if (IMAGE_EXTENSIONS.some((ext) => lowerUrl.includes(ext))) {
-      return { valid: true, type: 'image' };
+    if (GIF_EXTENSIONS.some((ext) => lowerUrl.includes(ext))) {
+      return { valid: true, type: 'gif' };
     }
 
-    if (lowerUrl.includes(GIF_EXTENSION)) {
-      return { valid: true, type: 'gif' };
+    if (IMAGE_EXTENSIONS.some((ext) => lowerUrl.includes(ext))) {
+      return { valid: true, type: 'image' };
     }
 
     if (VIDEO_EXTENSIONS.some((ext) => lowerUrl.includes(ext))) {

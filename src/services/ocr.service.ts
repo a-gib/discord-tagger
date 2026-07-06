@@ -43,7 +43,11 @@ class OcrServiceClass {
       if (process.env.DEBUG_MODE === 'true') {
         console.log('[DEBUG] Initializing OCR service...');
       }
-      this.worker = await createWorker('eng');
+      this.worker = await createWorker('eng', undefined, {
+        errorHandler: (err) => {
+          console.error('[OCR] Worker error:', err.message);
+        },
+      });
       if (process.env.DEBUG_MODE === 'true') {
         console.log('[DEBUG] OCR service ready');
       }
@@ -57,6 +61,13 @@ class OcrServiceClass {
    * Returns empty array on any error (OCR is best-effort)
    */
   async extractTags(imageUrl: string): Promise<string[]> {
+    // Skip unsupported formats (GIFs, videos, etc.)
+    const lowerUrl = imageUrl.toLowerCase();
+    if (lowerUrl.includes('.gif') || lowerUrl.includes('.mp4') ||
+        lowerUrl.includes('.mov') || lowerUrl.includes('.webm')) {
+      return [];
+    }
+
     try {
       await this.initialize();
       if (!this.worker) return [];
